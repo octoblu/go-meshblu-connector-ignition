@@ -1,0 +1,26 @@
+language: go
+go:
+- '1.6'
+before_install:
+- curl -o gpm https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm
+- chmod +x "./gpm"
+- "./gpm"
+before_deploy:
+- "./cross-compile.sh"
+- mkdir -p deploy/go-meshblu-connector-ignition/latest deploy/go-meshblu-connector-ignition/$TRAVIS_TAG
+- cp tmp/cross/* deploy/go-meshblu-connector-ignition/latest
+- cp tmp/cross/* deploy/go-meshblu-connector-ignition/$TRAVIS_TAG
+deploy:
+  provider: s3
+  access_key_id: AKIAJH2D5IPIRHYJT5IA
+  secret_access_key:
+    secure: "GgaSLL69leHLzqdbQtr33O4ivLoIjLzJJK4dRP858gCwEQeVsHeUWYSrnAuJ3KPbt7QCtLSrtb8L6Msvq/0J71+5M+bcNNsbV4gcnCmk4Ec8yKzrEgg/CmSCmXasy0Cg18U35a/DPn1REl21X8AwdJqYw+hlEPGLM0lqZ7y1CcFqKLLSlPqlDEjiqAyuqb6/7eO/tU+MakuTtS4iMiQclwe2su3ztDFjKPVdjImnBtSGnI675vBkYfdSy8qt2KaTaDQlJ2XlcSj7VQ0ccFairYI5BZAGk5P8mMnKOKK5r9umKgZwn682LJw+WE2RlzwWwbQrOkO1ufCY6qADCT6jKW+Afju9i7lmT6vsuZsuW+4OSom5CiyRCqR/OjEs8gnIINlDrinPGIbFgBveaXz7Q3KzfyYBzojnHgy54ByFGGniGKmgWxTGTxkbMrg9IL4znUtrSIdH7MQ2TJl1V9IgWGYr2ETfmnZoZ4oDq8sxqI+/59VCTu00A+EuGr+EFKtaMx8T2qkHMshOyTsCIcFQN218MHApVE9U8Xmp+3fWtIW1SWSn4GDBPGAXz06wxTd85vTKaZ/XYItOl18v8dC+i3hUpSDOjtG2VStrlAcPDjCxWWhI3IWwHCuUy1l3gs+D/LfLuWwuGedbrxIubQeIEHbqAPW+TW8C0fEyXGkVUJY="
+  bucket: meshblu-connector
+  region: us-west-2
+  skip_cleanup: true
+  local-dir: deploy
+  detect_encoding: true
+  upload-dir: tools
+  on:
+    tags: true
+    repo: octoblu/go-meshblu-connector-ignition
