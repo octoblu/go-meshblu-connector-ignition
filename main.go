@@ -6,10 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
+	"github.com/fatih/color"
+	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 	De "github.com/tj/go-debug"
 )
 
@@ -20,31 +21,55 @@ func main() {
 	app.Name = "meshblu-connector-ignition"
 	app.Version = version()
 	app.Action = run
-	app.Flags = []cli.Flag{}
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:   "legacy, l",
+			EnvVar: "MESHBLU_CONNECTOR_IGNITION_LEGACY",
+			Usage:  "Is legacy connector",
+		},
+		cli.StringFlag{
+			Name:   "connector, c",
+			EnvVar: "MESHBLU_CONNECTOR",
+			Usage:  "If a legacy connector, the connector name must be specified",
+		},
+	}
 	app.Run(os.Args)
 }
 
 func run(context *cli.Context) {
+	legacy, connector := getOpts(context)
+
 	sigTerm := make(chan os.Signal)
 	signal.Notify(sigTerm, syscall.SIGTERM)
 
-	sigTermReceived := false
+	runnerClient := runner.New(legacy, connector)
 
 	go func() {
 		<-sigTerm
 		fmt.Println("SIGTERM received, waiting to exit")
-		sigTermReceived = true
+		err := runnerClient.Shutdown()
+		if err != nil {
+			log.Fatalln("Error SIGTERMing connector", err.Error())
+		}
+		fmt.Println("Connector shutdown. I'll be back.")
+		os.Exit(0)
 	}()
 
-	for {
-		if sigTermReceived {
-			fmt.Println("I'll be back.")
-			os.Exit(0)
-		}
-
-		debug("meshblu-connector-ignition.loop")
-		time.Sleep(1 * time.Second)
+	err := runnerClient.Execute()
+	if err != nil {
+		log.Fatalln("Error executing connector", err.Error())
 	}
+}
+
+func getOpts(context *cli.Context) (bool, string) {
+	legacy := context.Bool("legacy")
+	connector := context.String("connector")
+	if legacy && connector == "" {
+		cli.ShowAppHelp(context)
+		color.Red("  Missing required flag --connector or MESHBLU_CONNECTOR when using legacy")
+		os.Exit(1)
+	}
+	return legacy, connector
 }
 
 func version() string {
