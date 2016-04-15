@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"syscall"
 )
 
@@ -51,12 +52,14 @@ func (client *Client) Shutdown() error {
 }
 
 func (client *Client) setupCommand() {
-	client.cmd = exec.Command("node", "./node_modules/.bin/meshblu-connector-runner", ".")
+	commandPath := path.Join("node_modules", "meshblu-connector-runner", "command.js")
+	client.cmd = exec.Command("node", commandPath, ".")
 	client.cmd.Env = getEnv("meshblu-connector-*")
 }
 
 func (client *Client) setupLegacyCommand() {
-	client.cmd = exec.Command("node", fmt.Sprintf("./node_modules/%s/command.js", client.getFullConnectorName()))
+	commandPath := path.Join("node_modules", client.getFullConnectorName(), "command.js")
+	client.cmd = exec.Command("node", commandPath)
 	client.cmd.Env = getEnv(client.getFullConnectorName())
 }
 
