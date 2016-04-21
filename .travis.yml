@@ -3,8 +3,13 @@ go:
 - '1.6'
 before_install:
 - go get -u github.com/FiloSottile/gvt
+install:
+- echo 'no install'
 before_deploy:
 - "./cross-compile.sh"
+branches:
+  only:
+  - /^v[0-9]/
 deploy:
 - provider: releases
   api_key:
