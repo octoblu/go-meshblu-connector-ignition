@@ -2,25 +2,20 @@ language: go
 go:
 - '1.6'
 before_install:
-- curl -o gpm https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm
-- chmod +x "./gpm"
-- "./gpm"
+- go get -u github.com/FiloSottile/gvt
 before_deploy:
 - "./cross-compile.sh"
-- mkdir -p deploy/go-meshblu-connector-ignition/latest deploy/go-meshblu-connector-ignition/$TRAVIS_TAG
-- cp tmp/cross/* deploy/go-meshblu-connector-ignition/latest
-- cp tmp/cross/* deploy/go-meshblu-connector-ignition/$TRAVIS_TAG
 deploy:
-  provider: s3
-  access_key_id: AKIAJH2D5IPIRHYJT5IA
-  secret_access_key:
-    secure: "GgaSLL69leHLzqdbQtr33O4ivLoIjLzJJK4dRP858gCwEQeVsHeUWYSrnAuJ3KPbt7QCtLSrtb8L6Msvq/0J71+5M+bcNNsbV4gcnCmk4Ec8yKzrEgg/CmSCmXasy0Cg18U35a/DPn1REl21X8AwdJqYw+hlEPGLM0lqZ7y1CcFqKLLSlPqlDEjiqAyuqb6/7eO/tU+MakuTtS4iMiQclwe2su3ztDFjKPVdjImnBtSGnI675vBkYfdSy8qt2KaTaDQlJ2XlcSj7VQ0ccFairYI5BZAGk5P8mMnKOKK5r9umKgZwn682LJw+WE2RlzwWwbQrOkO1ufCY6qADCT6jKW+Afju9i7lmT6vsuZsuW+4OSom5CiyRCqR/OjEs8gnIINlDrinPGIbFgBveaXz7Q3KzfyYBzojnHgy54ByFGGniGKmgWxTGTxkbMrg9IL4znUtrSIdH7MQ2TJl1V9IgWGYr2ETfmnZoZ4oDq8sxqI+/59VCTu00A+EuGr+EFKtaMx8T2qkHMshOyTsCIcFQN218MHApVE9U8Xmp+3fWtIW1SWSn4GDBPGAXz06wxTd85vTKaZ/XYItOl18v8dC+i3hUpSDOjtG2VStrlAcPDjCxWWhI3IWwHCuUy1l3gs+D/LfLuWwuGedbrxIubQeIEHbqAPW+TW8C0fEyXGkVUJY="
-  bucket: meshblu-connector
-  region: us-west-2
+- provider: releases
+  api_key:
+    secure: "A+s2Funmvba/eDPbxAqI4cjDibZPo6cx6+mmizCgXtvOu8XzoUjTxjrJGfVASckeUC93OO9Z/wyvP6dakg5zPv0Cbof1VnXBC6r5FL+F4e2Af8Drn17qG8lysNQHpfvn1ef9ElXN+w6JZW3SEoaUskwfxUSf0eYAT8g3fUoiFVdI8f/PrmM8/zn/vhBEHOroyipSSFZ4TjbJ21TvOLrZyOAS03DwpHsJNJwb0UinoEqR3wE+UbcYfX4S/WkLGo2T1IH8FEYtOYla7UG2p4WZA0wyFjNBHBG4i6YSUIpmHw9CCsxXgZVGpei84oORiOWwV2uX9MMnNLj5Z0wnxua89i+rui8VEPxynvFWFhta+OR32H/QXPCscfWNLzK6JqYFIIwqVnooLeGC6hsFr+ghmapQ3V6EZmqbj4uqdRscNHHg6vIbqtX8xGpoHQZwBGA5EQ2RWxyk250hVLROjevkSV+NzrgOit567xAv8/Co3tbN4CzwIy9W5VAqoQrmDk/sGT6h+NjyzOkYO41G9HlYD7sb6e/50bBk+6uS5jTW4XB3efSFmm4h/IgFh9SoQ3dM6B5yK6MvGIuZ+sUeAnv0P0I2fj4W8vE05xiwoPPTCJtvVGbp7ndELHiFa9M6JJFD71ncKVDXFDXMxW+ylBxLeCZBNK+u72bD/DMpzWZGanM="
+  file:
+  - "tmp/meshblu-connector-ignition-darwin-386"
+  - "tmp/meshblu-connector-ignition-darwin-amd64"
+  - "tmp/meshblu-connector-ignition-linux-386"
+  - "tmp/meshblu-connector-ignition-linux-amd64"
+  - "tmp/meshblu-connector-ignition-windows-386"
+  - "tmp/meshblu-connector-ignition-windows-amd64"
   skip_cleanup: true
-  local-dir: deploy
-  detect_encoding: true
-  upload-dir: tools
   on:
     tags: true
-    repo: octoblu/go-meshblu-connector-ignition

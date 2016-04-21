@@ -4,16 +4,33 @@ APP_NAME=meshblu-connector-ignition
 TMP_DIR=$PWD/tmp
 IMAGE_NAME=local/$APP_NAME
 
+if [ -z "$TMP_DIR" ]; then
+  echo "no tmp dir"
+  exit 1
+fi
+
 build_on_docker() {
   docker build --tag $IMAGE_NAME:built .
 }
 
 build_on_local() {
-  env GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o "${TMP_DIR}/${APP_NAME}" .
+  local goos="$1"
+  local goarch="$2"
+  local filename="$(get_filename "$goos" "$goarch")"
+  env GOOS="$goos" GOARCH="$goarch" go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o "${TMP_DIR}/${filename}" .
 }
 
-build_osx_on_local() {
-  env GOOS=darwin go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o "${APP_NAME}" .
+get_filename() {
+  local goos="$1"
+  local goarch="$2"
+  local filename="${APP_NAME}"
+  if [ ! -z "$goos" ]; then
+    filename="${filename}-${goos}"
+  fi
+  if [ ! -z "$goarch" ]; then
+    filename="${filename}-${goarch}"
+  fi
+  echo "$filename"
 }
 
 copy() {
@@ -23,6 +40,14 @@ copy() {
 
 init() {
   rm -rf $TMP_DIR/ \
+   && mkdir -p $TMP_DIR/
+}
+
+init_local() {
+  local goos="$1"
+  local goarch="$2"
+  local filename="$(get_filename "$goos" "$goarch")"
+  rm -rf $TMP_DIR/$filename \
    && mkdir -p $TMP_DIR/
 }
 
@@ -52,30 +77,22 @@ docker_build() {
 }
 
 local_build() {
-  init    || panic "init failed"
-  build_on_local || panic "build_on_local failed"
-  copy    || panic "copy failed"
-  package || panic "package failed"
-}
+  local goos="$1"
+  local goarch="$2"
 
-osx_build() {
-  init    || panic "init failed"
-  build_osx_on_local || panic "build_osx_on_local failed"
-}
-
-release_build() {
-  mkdir -p dist \
-  && osx_build \
-  && tar -czf "${APP_NAME}-osx.tar.gz" "${APP_NAME}" \
-  && mv "${APP_NAME}-osx.tar.gz" dist/
-  echo "Wrote dist/${APP_NAME}-osx.tar.gz"
+  init_local "$goos" "$goarch" || panic "init failed"
+  build_on_local "$goos" "$goarch" || panic "build_on_local failed"
 }
 
 main() {
   local mode="$1"
+
+  local goos="${GOOS}"
+  local goarch="${GOARCH}"
+
   if [ "$mode" == "local" ]; then
     echo "Local Build"
-    local_build
+    local_build "$goos" "$goarch"
     exit $?
   fi
 
@@ -85,19 +102,8 @@ main() {
     exit $?
   fi
 
-  if [ "$mode" == "osx" ]; then
-    echo "OSX Build"
-    osx_build
-    exit $?
-  fi
-
-  if [ "$mode" == "release" ]; then
-    echo "Release Build"
-    release_build
-    exit $?
-  fi
-
-  echo "Usage: ./build.sh local/docker/osx/release"
+  echo "Usage: ./build.sh (local|docker)"
   exit 1
 }
+
 main $@
