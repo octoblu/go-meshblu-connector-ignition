@@ -4,6 +4,8 @@ go:
 before_deploy:
 - "./cross-compile.sh"
 before_install:
+- echo "no before_install"
+install:
 - echo "no install"
 script:
 - echo "no tests"
