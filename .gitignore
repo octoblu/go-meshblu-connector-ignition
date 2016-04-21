@@ -24,4 +24,5 @@ _testmain.go
 *.prof
 meshblu-connector-ignition
 go-meshblu-connector-ignition
+entrypoint/meshblu-connector-ignition
 entrypoint/go-meshblu-connector-ignition
