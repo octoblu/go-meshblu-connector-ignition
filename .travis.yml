@@ -1,12 +1,12 @@
 language: go
 go:
 - '1.6'
-before_install:
-- go get -u github.com/FiloSottile/gvt
-install:
-- echo 'no install'
 before_deploy:
 - "./cross-compile.sh"
+before_install:
+- echo "no install"
+script:
+- echo "no tests"
 branches:
   only:
   - /^v[0-9]/
