@@ -9,7 +9,6 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
-	"github.com/fatih/color"
 	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 	De "github.com/tj/go-debug"
 )
@@ -21,28 +20,20 @@ func main() {
 	app.Name = "meshblu-connector-ignition"
 	app.Version = version()
 	app.Action = run
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:   "legacy, l",
-			EnvVar: "MESHBLU_CONNECTOR_IGNITION_LEGACY",
-			Usage:  "Is legacy connector",
-		},
-		cli.StringFlag{
-			Name:   "connector, c",
-			EnvVar: "MESHBLU_CONNECTOR",
-			Usage:  "If a legacy connector, the connector name must be specified",
-		},
-	}
+	app.Flags = []cli.Flag{}
 	app.Run(os.Args)
 }
 
 func run(context *cli.Context) {
-	legacy, connector := getOpts(context)
-
 	sigTerm := make(chan os.Signal)
 	signal.Notify(sigTerm, syscall.SIGTERM)
 
-	runnerClient := runner.New(legacy, connector)
+	serviceConfig, err := runner.GetServiceConfig()
+	if err != nil {
+		log.Fatalln("Error executing connector", err.Error())
+	}
+
+	runnerClient := runner.New(serviceConfig)
 
 	go func() {
 		<-sigTerm
@@ -55,21 +46,10 @@ func run(context *cli.Context) {
 		os.Exit(0)
 	}()
 
-	err := runnerClient.Execute()
+	err = runnerClient.Execute()
 	if err != nil {
 		log.Fatalln("Error executing connector", err.Error())
 	}
-}
-
-func getOpts(context *cli.Context) (bool, string) {
-	legacy := context.Bool("legacy")
-	connector := context.String("connector")
-	if legacy && connector == "" {
-		cli.ShowAppHelp(context)
-		color.Red("  Missing required flag --connector or MESHBLU_CONNECTOR when using legacy")
-		os.Exit(1)
-	}
-	return legacy, connector
 }
 
 func version() string {

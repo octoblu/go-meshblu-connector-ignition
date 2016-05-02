@@ -16,27 +16,27 @@ type Runner interface {
 
 // Client defines the stucture of the client
 type Client struct {
-	legacy    bool
-	connector string
-	cmd       *exec.Cmd
+	serviceConfig *ServiceConfig
+	cmd           *exec.Cmd
 }
 
 // New creates a new instance of runner
-func New(legacy bool, connector string) Runner {
-	return &Client{legacy, connector, nil}
+func New(serviceConfig *ServiceConfig) Runner {
+	return &Client{serviceConfig, nil}
 }
 
 // Execute runs the connector
 func (client *Client) Execute() error {
-	if client.legacy {
+	commandPath := client.getCommandPath()
+	if client.serviceConfig.Legacy {
 		err := client.npmInstall()
 		if err != nil {
 			return err
 		}
-		client.setupLegacyCommand()
-	} else {
-		client.setupCommand()
+		commandPath = client.getLegacyCommandPath()
 	}
+	client.cmd = exec.Command(commandPath, client.serviceConfig.Args...)
+	client.cmd.Env = client.getEnv()
 	client.cmd.Stdout = os.Stdout
 	client.cmd.Stderr = os.Stderr
 	err := client.cmd.Start()
@@ -51,16 +51,12 @@ func (client *Client) Shutdown() error {
 	return client.cmd.Process.Signal(syscall.SIGTERM)
 }
 
-func (client *Client) setupCommand() {
-	commandPath := path.Join("node_modules", "meshblu-connector-runner", "command.js")
-	client.cmd = exec.Command("node", commandPath, ".")
-	client.cmd.Env = getEnv("meshblu-connector-*")
+func (client *Client) getCommandPath() string {
+	return path.Join("node_modules", "meshblu-connector-runner", "command.js")
 }
 
-func (client *Client) setupLegacyCommand() {
-	commandPath := path.Join("node_modules", client.getFullConnectorName(), "command.js")
-	client.cmd = exec.Command("node", commandPath)
-	client.cmd.Env = getEnv(client.getFullConnectorName())
+func (client *Client) getLegacyCommandPath() string {
+	return path.Join("node_modules", client.getFullConnectorName(), "command.js")
 }
 
 func (client *Client) npmInstall() error {
@@ -75,13 +71,18 @@ func (client *Client) npmInstall() error {
 }
 
 func (client *Client) getFullConnectorName() string {
-	return fmt.Sprintf("meshblu-%s", client.connector)
+	return fmt.Sprintf("meshblu-%s", client.serviceConfig.ConnectorName)
 }
 
-func getEnv(debugVar string) []string {
-	env := os.Environ()
-	if os.Getenv("DEBUG") == "" {
-		env = append(env, fmt.Sprintf("DEBUG=%s", debugVar))
+func (client *Client) getEnv() []string {
+	debug := os.Getenv("DEBUG")
+	if debug == "" {
+		if client.serviceConfig.Legacy {
+			debug = fmt.Sprintf("DEBUG=%s", client.getFullConnectorName())
+		} else {
+			debug = fmt.Sprintf("DEBUG=%s", "meshblu-connector-*")
+		}
 	}
-	return env
+	env := append(os.Environ(), debug)
+	return append(env, client.serviceConfig.Env...)
 }
