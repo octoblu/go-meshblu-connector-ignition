@@ -1,7 +1,7 @@
 package runner
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/kardianos/service"
 )
@@ -54,7 +54,7 @@ func (client *Client) Start() error {
 		for {
 			err := <-errs
 			if err != nil {
-				log.Print(err)
+				fmt.Println(err)
 			}
 		}
 	}()

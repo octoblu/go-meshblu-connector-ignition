@@ -29,7 +29,7 @@ func (prg *Program) Start(srv service.Service) error {
 		commandPath = prg.getLegacyCommandPath()
 	}
 	prg.cmd = exec.Command(commandPath, prg.config.Args...)
-	prg.cmd.Env = prg.getEnv()
+	prg.initCmd(prg.cmd)
 
 	go prg.run()
 
@@ -46,6 +46,43 @@ func (prg *Program) run() {
 		}
 	}()
 
+	prg.setLogOnCmd(prg.cmd)
+
+	err := prg.cmd.Start()
+	if err != nil {
+		prg.logger.Warningf("Error running (cmd.Start): %v", err)
+	}
+	err = prg.cmd.Wait()
+	if err != nil {
+		prg.logger.Warningf("Error running (cmd.Wait): %v", err)
+	}
+	return
+}
+
+// Stop service but really
+func (prg *Program) Stop(srv service.Service) error {
+	close(prg.exit)
+	fmt.Println("Stopping")
+	prg.logger.Info("Stopping ", prg.config.DisplayName)
+	prg.cmd.Process.Kill()
+	if service.Interactive() {
+		os.Exit(0)
+	}
+	return nil
+}
+
+func (prg *Program) initCmd(cmd *exec.Cmd) {
+	cmd.Dir = prg.config.Dir
+	env := prg.getEnv()
+	cmd.Env = env
+}
+
+func (prg *Program) setLogOnCmd(cmd *exec.Cmd) {
+	if service.Interactive() {
+		prg.cmd.Stderr = os.Stderr
+		prg.cmd.Stdout = os.Stdout
+		return
+	}
 	if prg.config.Stderr != "" {
 		stdErrFile, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
 		if err != nil {
@@ -64,26 +101,6 @@ func (prg *Program) run() {
 		defer stdOutFile.Close()
 		prg.cmd.Stdout = stdOutFile
 	}
-
-	err := prg.cmd.Run()
-	if err != nil {
-		prg.logger.Warningf("Error running: %v", err)
-	}
-
-	return
-}
-
-// Stop service but really
-func (prg *Program) Stop(srv service.Service) error {
-	close(prg.exit)
-	prg.logger.Info("Stopping ", prg.config.DisplayName)
-	if prg.cmd.ProcessState.Exited() == false {
-		prg.cmd.Process.Kill()
-	}
-	if service.Interactive() {
-		os.Exit(0)
-	}
-	return nil
 }
 
 func (prg *Program) getCommandPath() string {
@@ -96,8 +113,8 @@ func (prg *Program) getLegacyCommandPath() string {
 
 func (prg *Program) npmInstall() error {
 	cmd := exec.Command("npm", "install", prg.getFullConnectorName())
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	prg.initCmd(prg.cmd)
+	prg.setLogOnCmd(prg.cmd)
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -118,6 +135,5 @@ func (prg *Program) getEnv() []string {
 			debug = fmt.Sprintf("DEBUG=%s", "meshblu-connector-*")
 		}
 	}
-	env := append(os.Environ(), debug)
-	return append(env, prg.config.Env...)
+	return append(prg.config.Env, debug)
 }
