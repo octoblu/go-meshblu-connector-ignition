@@ -28,7 +28,7 @@ func (prg *Program) Start(srv service.Service) error {
 		}
 		commandPath = prg.getLegacyCommandPath()
 	}
-	prg.cmd = exec.Command(commandPath, prg.config.Args...)
+	prg.cmd = exec.Command("node", commandPath)
 	prg.initCmd(prg.cmd)
 
 	go prg.run()

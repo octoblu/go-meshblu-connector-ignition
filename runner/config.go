@@ -16,7 +16,6 @@ type Config struct {
 	ConnectorName string
 	Legacy        bool
 	Dir           string
-	Args          []string
 	Env           []string
 
 	Stderr, Stdout string
