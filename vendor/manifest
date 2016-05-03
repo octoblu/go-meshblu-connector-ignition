@@ -51,6 +51,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/kardianos/service",
+			"repository": "https://github.com/kardianos/service",
+			"vcs": "git",
+			"revision": "d97d87340b4a0d418f4d266ca7b00ba1d31e0d5a",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/mattn/go-colorable",
 			"repository": "https://github.com/mattn/go-colorable",
 			"vcs": "git",

@@ -28,7 +28,7 @@ func run(context *cli.Context) {
 	sigTerm := make(chan os.Signal)
 	signal.Notify(sigTerm, syscall.SIGTERM)
 
-	serviceConfig, err := runner.GetServiceConfig()
+	serviceConfig, err := runner.GetConfig()
 	if err != nil {
 		log.Fatalln("Error executing connector", err.Error())
 	}
@@ -46,7 +46,7 @@ func run(context *cli.Context) {
 		os.Exit(0)
 	}()
 
-	err = runnerClient.Execute()
+	err = runnerClient.Start()
 	if err != nil {
 		log.Fatalln("Error executing connector", err.Error())
 	}

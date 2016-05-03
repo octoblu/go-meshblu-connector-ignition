@@ -8,8 +8,11 @@ import (
 	"github.com/kardianos/osext"
 )
 
-// ServiceConfig is the runner connector config structure.
-type ServiceConfig struct {
+// Config is the runner connector config structure.
+type Config struct {
+	ServiceName   string
+	DisplayName   string
+	Description   string
 	ConnectorName string
 	Legacy        bool
 	Dir           string
@@ -19,8 +22,8 @@ type ServiceConfig struct {
 	Stderr, Stdout string
 }
 
-// GetServiceConfig get the service config
-func GetServiceConfig() (*ServiceConfig, error) {
+// GetConfig get the service config
+func GetConfig() (*Config, error) {
 	path, err := getConfigPath()
 	if err != nil {
 		return nil, err
@@ -31,7 +34,7 @@ func GetServiceConfig() (*ServiceConfig, error) {
 	}
 	defer f.Close()
 
-	conf := &ServiceConfig{}
+	conf := &Config{}
 
 	r := json.NewDecoder(f)
 	err = r.Decode(&conf)
@@ -47,9 +50,7 @@ func getConfigPath() (string, error) {
 		return "", err
 	}
 
-	dir, execname := filepath.Split(fullexecpath)
-	ext := filepath.Ext(execname)
-	name := execname[:len(execname)-len(ext)]
+	dir, _ := filepath.Split(fullexecpath)
 
-	return filepath.Join(dir, name+".json"), nil
+	return filepath.Join(dir, "service.json"), nil
 }
