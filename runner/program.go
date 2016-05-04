@@ -47,15 +47,33 @@ func (prg *Program) run() {
 		}
 	}()
 
-	prg.setLogOnCmd(prg.cmd)
-
-	err := prg.cmd.Start()
-	if err != nil {
-		prg.logger.Warningf("Error running (cmd.Start): %v", err)
+	if service.Interactive() {
+		prg.cmd.Stderr = os.Stderr
+		prg.cmd.Stdout = os.Stdout
 	}
-	err = prg.cmd.Wait()
+
+	if prg.config.Stderr != "" {
+		stdErrFile, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		if err != nil {
+			prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
+			return
+		}
+		defer stdErrFile.Close()
+		prg.cmd.Stderr = stdErrFile
+	}
+	if prg.config.Stdout != "" {
+		stdOutFile, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		if err != nil {
+			prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
+			return
+		}
+		defer stdOutFile.Close()
+		prg.cmd.Stdout = stdOutFile
+	}
+
+	err := prg.cmd.Run()
 	if err != nil {
-		prg.logger.Warningf("Error running (cmd.Wait): %v", err)
+		prg.logger.Warningf("Error running: %v", err)
 	}
 	return
 }
@@ -63,9 +81,11 @@ func (prg *Program) run() {
 // Stop service but really
 func (prg *Program) Stop(srv service.Service) error {
 	close(prg.exit)
-	fmt.Println("Stopping")
 	prg.logger.Info("Stopping ", prg.config.DisplayName)
-	prg.cmd.Process.Kill()
+	if prg.cmd != nil {
+		prg.cmd.Process.Kill()
+	}
+
 	if service.Interactive() {
 		os.Exit(0)
 	}
@@ -76,32 +96,6 @@ func (prg *Program) initCmd(cmd *exec.Cmd) {
 	cmd.Dir = prg.config.Dir
 	env := prg.getEnv()
 	cmd.Env = env
-}
-
-func (prg *Program) setLogOnCmd(cmd *exec.Cmd) {
-	if service.Interactive() {
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		return
-	}
-	if prg.config.Stderr != "" {
-		stdErrFile, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
-		if err != nil {
-			prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
-			return
-		}
-		defer stdErrFile.Close()
-		cmd.Stderr = stdErrFile
-	}
-	if prg.config.Stdout != "" {
-		stdOutFile, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
-		if err != nil {
-			prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
-			return
-		}
-		defer stdOutFile.Close()
-		cmd.Stdout = stdOutFile
-	}
 }
 
 func (prg *Program) getCommandPath() string {
@@ -115,12 +109,31 @@ func (prg *Program) getLegacyCommandPath() string {
 func (prg *Program) npmInstall() error {
 	cmd := exec.Command(prg.theExecutable("npm"), "install", prg.getFullConnectorName())
 	prg.initCmd(cmd)
-	prg.setLogOnCmd(cmd)
-	err := cmd.Start()
-	if err != nil {
-		return err
+	if service.Interactive() {
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		return nil
 	}
-	return cmd.Wait()
+	if prg.config.Stderr != "" {
+		stdErrFile, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		if err != nil {
+			prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
+			return nil
+		}
+		defer stdErrFile.Close()
+		cmd.Stderr = stdErrFile
+	}
+	if prg.config.Stdout != "" {
+		stdOutFile, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		if err != nil {
+			prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
+			return nil
+		}
+		defer stdOutFile.Close()
+		cmd.Stdout = stdOutFile
+	}
+
+	return cmd.Run()
 }
 
 func (prg *Program) getFullConnectorName() string {
