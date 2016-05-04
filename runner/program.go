@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 
 	"github.com/kardianos/service"
@@ -105,11 +104,11 @@ func (prg *Program) setLogOnCmd(cmd *exec.Cmd) {
 }
 
 func (prg *Program) getCommandPath() string {
-	return path.Join("node_modules", "meshblu-connector-runner", "command.js")
+	return filepath.Join("node_modules", "meshblu-connector-runner", "command.js")
 }
 
 func (prg *Program) getLegacyCommandPath() string {
-	return path.Join("node_modules", prg.getFullConnectorName(), "command.js")
+	return filepath.Join("node_modules", prg.getFullConnectorName(), "command.js")
 }
 
 func (prg *Program) npmInstall() error {
