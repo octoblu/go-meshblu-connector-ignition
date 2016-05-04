@@ -17,7 +17,6 @@ type Config struct {
 	BinPath       string
 	Legacy        bool
 	Dir           string
-	Env           []string
 
 	Stderr, Stdout string
 }

@@ -28,6 +28,7 @@ func (prg *Program) Start(srv service.Service) error {
 		}
 		commandPath = prg.getLegacyCommandPath()
 	}
+
 	prg.cmd = exec.Command(prg.theExecutable("node"), commandPath)
 	prg.initCmd(prg.cmd)
 
@@ -79,8 +80,8 @@ func (prg *Program) initCmd(cmd *exec.Cmd) {
 
 func (prg *Program) setLogOnCmd(cmd *exec.Cmd) {
 	if service.Interactive() {
-		prg.cmd.Stderr = os.Stderr
-		prg.cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
 		return
 	}
 	if prg.config.Stderr != "" {
@@ -90,7 +91,7 @@ func (prg *Program) setLogOnCmd(cmd *exec.Cmd) {
 			return
 		}
 		defer stdErrFile.Close()
-		prg.cmd.Stderr = stdErrFile
+		cmd.Stderr = stdErrFile
 	}
 	if prg.config.Stdout != "" {
 		stdOutFile, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
@@ -99,22 +100,22 @@ func (prg *Program) setLogOnCmd(cmd *exec.Cmd) {
 			return
 		}
 		defer stdOutFile.Close()
-		prg.cmd.Stdout = stdOutFile
+		cmd.Stdout = stdOutFile
 	}
 }
 
 func (prg *Program) getCommandPath() string {
-	return filepath.Join("node_modules", "meshblu-connector-runner", "command.js")
+	return fmt.Sprintf(".%s%s", string(filepath.Separator), filepath.Join("node_modules", "meshblu-connector-runner", "command.js"))
 }
 
 func (prg *Program) getLegacyCommandPath() string {
-	return filepath.Join("node_modules", prg.getFullConnectorName(), "command.js")
+	return fmt.Sprintf(".%s%s", string(filepath.Separator), filepath.Join("node_modules", prg.getFullConnectorName(), "command.js"))
 }
 
 func (prg *Program) npmInstall() error {
 	cmd := exec.Command(prg.theExecutable("npm"), "install", prg.getFullConnectorName())
-	prg.initCmd(prg.cmd)
-	prg.setLogOnCmd(prg.cmd)
+	prg.initCmd(cmd)
+	prg.setLogOnCmd(cmd)
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -135,7 +136,8 @@ func (prg *Program) getEnv() []string {
 			debug = fmt.Sprintf("DEBUG=%s", "meshblu-connector-*")
 		}
 	}
-	return append(prg.config.Env, debug)
+	binPathEnv := fmt.Sprintf("PATH=%s", prg.config.BinPath)
+	return append(os.Environ(), binPathEnv, debug)
 }
 
 func (prg *Program) theExecutable(name string) string {
