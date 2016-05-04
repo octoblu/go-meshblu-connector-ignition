@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 
 	"github.com/kardianos/service"
 )
@@ -28,7 +29,7 @@ func (prg *Program) Start(srv service.Service) error {
 		}
 		commandPath = prg.getLegacyCommandPath()
 	}
-	prg.cmd = exec.Command("node", commandPath)
+	prg.cmd = exec.Command(prg.theExecutable("node"), commandPath)
 	prg.initCmd(prg.cmd)
 
 	go prg.run()
@@ -112,7 +113,7 @@ func (prg *Program) getLegacyCommandPath() string {
 }
 
 func (prg *Program) npmInstall() error {
-	cmd := exec.Command("npm", "install", prg.getFullConnectorName())
+	cmd := exec.Command(prg.theExecutable("npm"), "install", prg.getFullConnectorName())
 	prg.initCmd(prg.cmd)
 	prg.setLogOnCmd(prg.cmd)
 	err := cmd.Start()
@@ -136,4 +137,8 @@ func (prg *Program) getEnv() []string {
 		}
 	}
 	return append(prg.config.Env, debug)
+}
+
+func (prg *Program) theExecutable(name string) string {
+	return filepath.Join(prg.config.BinPath, name)
 }

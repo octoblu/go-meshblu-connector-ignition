@@ -14,6 +14,7 @@ type Config struct {
 	DisplayName   string
 	Description   string
 	ConnectorName string
+	BinPath       string
 	Legacy        bool
 	Dir           string
 	Env           []string
