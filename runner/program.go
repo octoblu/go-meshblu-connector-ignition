@@ -49,22 +49,20 @@ func (prg *Program) run() {
 	}
 
 	if prg.config.Stderr != "" {
-		stdErrFile, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		stdErrFile, err := prg.getStderrFile()
 		if err != nil {
-			prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
-			return
+			return nil
 		}
 		defer stdErrFile.Close()
-		prg.cmd.Stderr = stdErrFile
+		cmd.Stderr = stdErrFile
 	}
 	if prg.config.Stdout != "" {
-		stdOutFile, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		stdOutFile, err := prg.getStdoutFile()
 		if err != nil {
-			prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
-			return
+			return nil
 		}
 		defer stdOutFile.Close()
-		prg.cmd.Stdout = stdOutFile
+		cmd.Stdout = stdOutFile
 	}
 
 	err := prg.cmd.Run()
@@ -115,29 +113,49 @@ func (prg *Program) npmInstall() error {
 		return nil
 	}
 	if prg.config.Stderr != "" {
-		stdErrFile, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		stdErrFile, err := prg.getStderrFile()
 		if err != nil {
-			prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
 			return nil
 		}
 		defer stdErrFile.Close()
 		cmd.Stderr = stdErrFile
 	}
 	if prg.config.Stdout != "" {
-		stdOutFile, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+		stdOutFile, err := prg.getStdoutFile()
 		if err != nil {
-			prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
 			return nil
 		}
 		defer stdOutFile.Close()
 		cmd.Stdout = stdOutFile
 	}
 
-	return cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		prg.logger.Warningf("Error running: %v", err)
+	}
+	return err
 }
 
 func (prg *Program) getFullConnectorName() string {
 	return fmt.Sprintf("meshblu-%s", prg.config.ConnectorName)
+}
+
+func (prg *Program) getStderrFile() (*os.File, error) {
+	file, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
+		return nil, err
+	}
+	return file, nil
+}
+
+func (prg *Program) getStdoutFile() (*os.File, error) {
+	file, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
+		return nil, err
+	}
+	return file, nil
 }
 
 func (prg *Program) getEnv() []string {
