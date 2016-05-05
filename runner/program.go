@@ -28,8 +28,11 @@ func (prg *Program) Start(srv service.Service) error {
 		}
 		commandPath = prg.getLegacyCommandPath()
 	}
-
-	prg.cmd = exec.Command(prg.theExecutable("node"), commandPath)
+	nodeCommand, err := prg.theExecutable("node")
+	if err != nil {
+		return err
+	}
+	prg.cmd = exec.Command(nodeCommand, commandPath)
 	prg.initCmd(prg.cmd)
 
 	go prg.run()
@@ -39,13 +42,6 @@ func (prg *Program) Start(srv service.Service) error {
 
 func (prg *Program) run() {
 	prg.logger.Info("Starting ", prg.config.DisplayName)
-	defer func() {
-		if service.Interactive() {
-			prg.Stop(prg.srv)
-		} else {
-			prg.srv.Stop()
-		}
-	}()
 
 	if service.Interactive() {
 		prg.cmd.Stderr = os.Stderr
@@ -107,7 +103,11 @@ func (prg *Program) getLegacyCommandPath() string {
 }
 
 func (prg *Program) npmInstall() error {
-	cmd := exec.Command(prg.theExecutable("npm"), "install", prg.getFullConnectorName())
+	npmCommand, err := prg.theExecutable("npm")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(npmCommand, "install", prg.getFullConnectorName())
 	prg.initCmd(cmd)
 	if service.Interactive() {
 		cmd.Stderr = os.Stderr
@@ -153,6 +153,12 @@ func (prg *Program) getEnv() []string {
 	return append(os.Environ(), binPathEnv, debug)
 }
 
-func (prg *Program) theExecutable(name string) string {
-	return filepath.Join(prg.config.BinPath, name)
+func (prg *Program) theExecutable(name string) (string, error) {
+	file, err := exec.LookPath(filepath.Join(prg.config.BinPath, name))
+	if err != nil {
+		prg.logger.Warningf("Failed to get Executable File, %s - Error %v", file, err)
+		return "", err
+	}
+	prg.logger.Infof("got executable %s", file)
+	return file, nil
 }
