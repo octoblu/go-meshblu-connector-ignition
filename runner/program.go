@@ -28,7 +28,7 @@ func (prg *Program) Start(srv service.Service) error {
 		}
 		commandPath = prg.getLegacyCommandPath()
 	}
-	nodeCommand, err := prg.theExecutable("node")
+	nodeCommand, err := prg.TheExecutable("node")
 	if err != nil {
 		return err
 	}
@@ -49,20 +49,14 @@ func (prg *Program) run() {
 	}
 
 	if prg.config.Stderr != "" {
-		stdErrFile, err := prg.getStderrFile()
-		if err != nil {
-			return nil
-		}
+		stdErrFile, _ := prg.getStderrFile()
 		defer stdErrFile.Close()
-		cmd.Stderr = stdErrFile
+		prg.cmd.Stderr = stdErrFile
 	}
 	if prg.config.Stdout != "" {
-		stdOutFile, err := prg.getStdoutFile()
-		if err != nil {
-			return nil
-		}
+		stdOutFile, _ := prg.getStdoutFile()
 		defer stdOutFile.Close()
-		cmd.Stdout = stdOutFile
+		prg.cmd.Stdout = stdOutFile
 	}
 
 	err := prg.cmd.Run()
@@ -101,7 +95,7 @@ func (prg *Program) getLegacyCommandPath() string {
 }
 
 func (prg *Program) npmInstall() error {
-	npmCommand, err := prg.theExecutable("npm")
+	npmCommand, err := prg.TheExecutable("npm")
 	if err != nil {
 		return err
 	}
@@ -110,28 +104,22 @@ func (prg *Program) npmInstall() error {
 	if service.Interactive() {
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
-		return nil
-	}
-	if prg.config.Stderr != "" {
-		stdErrFile, err := prg.getStderrFile()
-		if err != nil {
-			return nil
+	} else {
+		if prg.config.Stderr != "" {
+			stdErrFile, _ := prg.getStderrFile()
+			defer stdErrFile.Close()
+			cmd.Stderr = stdErrFile
 		}
-		defer stdErrFile.Close()
-		cmd.Stderr = stdErrFile
-	}
-	if prg.config.Stdout != "" {
-		stdOutFile, err := prg.getStdoutFile()
-		if err != nil {
-			return nil
+		if prg.config.Stdout != "" {
+			stdOutFile, _ := prg.getStdoutFile()
+			defer stdOutFile.Close()
+			cmd.Stdout = stdOutFile
 		}
-		defer stdOutFile.Close()
-		cmd.Stdout = stdOutFile
 	}
 
 	err = cmd.Run()
 	if err != nil {
-		prg.logger.Warningf("Error running: %v", err)
+		prg.logger.Warningf("Error running npm: %v", err)
 	}
 	return err
 }
@@ -143,7 +131,7 @@ func (prg *Program) getFullConnectorName() string {
 func (prg *Program) getStderrFile() (*os.File, error) {
 	file, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
 	if err != nil {
-		prg.logger.Warningf("Failed to open std err %q: %v", prg.config.Stderr, err)
+		prg.logger.Warningf("Failed to open stderr %q: %v", prg.config.Stderr, err)
 		return nil, err
 	}
 	return file, nil
@@ -152,27 +140,22 @@ func (prg *Program) getStderrFile() (*os.File, error) {
 func (prg *Program) getStdoutFile() (*os.File, error) {
 	file, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
 	if err != nil {
-		prg.logger.Warningf("Failed to open std out %q: %v", prg.config.Stdout, err)
+		prg.logger.Warningf("Failed to open stdout %q: %v", prg.config.Stdout, err)
 		return nil, err
 	}
 	return file, nil
 }
 
 func (prg *Program) getEnv() []string {
-	debug := os.Getenv("DEBUG")
-	if debug == "" {
-		if prg.config.Legacy {
-			debug = fmt.Sprintf("DEBUG=%s", prg.getFullConnectorName())
-		} else {
-			debug = fmt.Sprintf("DEBUG=%s", "meshblu-connector-*")
-		}
-	}
-	binPathEnv := fmt.Sprintf("PATH=%s", prg.config.BinPath)
-	return append(os.Environ(), binPathEnv, debug)
+	debug := SetEnv("DEBUG", "meshblu-*")
+	pathEnv := GetPathEnv(prg.config.BinPath)
+	return GetEnviron(debug, pathEnv)
 }
 
-func (prg *Program) theExecutable(name string) (string, error) {
-	file, err := exec.LookPath(filepath.Join(prg.config.BinPath, name))
+// TheExecutable should return the correct executable
+func (prg *Program) TheExecutable(name string) (string, error) {
+	thePath := filepath.Join(prg.config.BinPath, name)
+	file, err := exec.LookPath(thePath)
 	if err != nil {
 		prg.logger.Warningf("Failed to get Executable File, %s - Error %v", file, err)
 		return "", err
