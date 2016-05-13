@@ -18,6 +18,7 @@ type Config struct {
 	Tag           string
 	BinPath       string
 	Legacy        bool
+	LegacyTag     string
 	Dir           string
 
 	Stderr, Stdout string
