@@ -31,6 +31,10 @@ func (uc *UpdateConnector) DoBoth() error {
 
 // Do downloads and extracts the update
 func (uc *UpdateConnector) Do() error {
+	err := uc.prg.internalStop()
+	if err != nil {
+		return err
+	}
 	uc.prg.logger.Info("Updating Connector")
 	cwd := uc.prg.config.Dir
 	downloadClient := downloader.New(cwd)
@@ -40,6 +44,10 @@ func (uc *UpdateConnector) Do() error {
 	}
 	extractorClient := extractor.New()
 	err = extractorClient.Do(downloadFile, cwd)
+	if err != nil {
+		return err
+	}
+	err = uc.prg.internalStart()
 	if err != nil {
 		return err
 	}
@@ -89,5 +97,10 @@ func (uc *UpdateConnector) DoLegacy() error {
 func (uc *UpdateConnector) getConnectorURI() string {
 	config := uc.prg.config
 	baseURI := fmt.Sprintf("https://github.com/%s/releases/download", config.GithubSlug)
-	return fmt.Sprintf("%s/%s/%s-%s-%s", baseURI, config.Tag, config.ConnectorName, runtime.GOOS, runtime.GOARCH)
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	fileName := fmt.Sprintf("%s-%s-%s.%s", config.ConnectorName, runtime.GOOS, runtime.GOARCH, ext)
+	return fmt.Sprintf("%s/%s/%s", baseURI, uc.prg.device.VersionWithV(), fileName)
 }

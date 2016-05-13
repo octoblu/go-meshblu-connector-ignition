@@ -1,6 +1,7 @@
 package device
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/octoblu/go-meshblu/config"
@@ -13,6 +14,7 @@ type Client struct {
 	meshbluClient meshblu.Meshblu
 	meshbluDevice *MeshbluDevice
 	lastDevice    *MeshbluDevice
+	tag           string
 }
 
 // Device defines the device management interface
@@ -22,10 +24,11 @@ type Device interface {
 	DidStopChange() bool
 	Stopped() bool
 	Version() string
+	VersionWithV() string
 }
 
 // New creates a new device struct
-func New(configPath string) (Device, error) {
+func New(configPath, tag string) (Device, error) {
 	config, err := config.ReadFromConfig(configPath)
 	if err != nil {
 		return nil, err
@@ -43,6 +46,7 @@ func New(configPath string) (Device, error) {
 	device := &Client{
 		config:        config,
 		meshbluClient: meshbluClient,
+		tag:           tag,
 	}
 	return device, nil
 }
@@ -53,7 +57,7 @@ func (client *Client) Update() error {
 	if err != nil {
 		return err
 	}
-	meshbluDevice, err := ParseMeshbluDevice(data)
+	meshbluDevice, err := ParseMeshbluDevice(data, client.tag)
 	if err != nil {
 		return err
 	}
@@ -99,4 +103,10 @@ func (client *Client) Stopped() bool {
 func (client *Client) Version() string {
 	version := client.meshbluDevice.Connector.Version
 	return strings.Replace(version, "v", "", 1)
+}
+
+// VersionWithV return connector version
+func (client *Client) VersionWithV() string {
+	version := client.Version()
+	return fmt.Sprintf("v%s", version)
 }

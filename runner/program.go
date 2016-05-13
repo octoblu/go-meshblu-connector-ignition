@@ -140,7 +140,7 @@ func (prg *Program) checkForChanges() error {
 	}
 	versionChange := prg.device.DidVersionChange()
 	if versionChange {
-		prg.logger.Infof("Device Version Change")
+		prg.logger.Infof("Device Version Change %v", prg.device.Version())
 		err := prg.uc.DoBoth()
 		if err != nil {
 			return err

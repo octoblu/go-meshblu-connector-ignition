@@ -14,9 +14,15 @@ type MeshbluDevice struct {
 }
 
 // ParseMeshbluDevice creates a device from a JSON byte array
-func ParseMeshbluDevice(data []byte) (*MeshbluDevice, error) {
+func ParseMeshbluDevice(data []byte, defaultVersion string) (*MeshbluDevice, error) {
 	device := &MeshbluDevice{}
 	err := json.Unmarshal(data, device)
+	if device.Connector == nil {
+		device.Connector = &Connector{
+			Version: defaultVersion,
+			Stopped: false,
+		}
+	}
 	return device, err
 }
 

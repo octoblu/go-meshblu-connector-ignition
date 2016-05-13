@@ -61,16 +61,16 @@ func (client *Client) Start() error {
 		}
 	}()
 
-	meshbluConfigPath := filepath.Join(client.prg.config.Dir, "meshblu.json")
-	deviceClient, err := device.New(meshbluConfigPath)
+	meshbluConfigPath := filepath.Join(client.config.Dir, "meshblu.json")
+	deviceClient, err := device.New(meshbluConfigPath, client.config.Tag)
+	if err != nil {
+		return err
+	}
+	err = deviceClient.Update()
 	if err != nil {
 		return err
 	}
 	client.prg.device = deviceClient
-	err = client.prg.device.Update()
-	if err != nil {
-		return err
-	}
 
 	client.prg.uc = NewUpdateConnector(client.prg)
 
