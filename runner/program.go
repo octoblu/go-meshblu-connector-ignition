@@ -18,13 +18,14 @@ type Program struct {
 	logger service.Logger
 	cmd    *exec.Cmd
 	device device.Device
+	uc     *UpdateConnector
 	exit   chan struct{}
 }
 
 // Start service but really
 func (prg *Program) Start(srv service.Service) error {
 	if prg.config.Legacy {
-		err := prg.npmInstall()
+		err := prg.uc.DoLegacy()
 		if err != nil {
 			return err
 		}
@@ -131,36 +132,6 @@ func (prg *Program) getLegacyCommandPath() string {
 	return fmt.Sprintf(".%s%s", string(filepath.Separator), filepath.Join("node_modules", prg.getFullConnectorName(), "command.js"))
 }
 
-func (prg *Program) npmInstall() error {
-	npmCommand, err := prg.TheExecutable("npm")
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command(npmCommand, "install", prg.getFullConnectorName())
-	prg.initCmd(cmd)
-	if service.Interactive() {
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-	} else {
-		if prg.config.Stderr != "" {
-			stdErrFile, _ := prg.getStderrFile()
-			defer stdErrFile.Close()
-			cmd.Stderr = stdErrFile
-		}
-		if prg.config.Stdout != "" {
-			stdOutFile, _ := prg.getStdoutFile()
-			defer stdOutFile.Close()
-			cmd.Stdout = stdOutFile
-		}
-	}
-
-	err = cmd.Run()
-	if err != nil {
-		prg.logger.Warningf("Error running npm: %v", err)
-	}
-	return err
-}
-
 func (prg *Program) checkForChanges() error {
 	err := prg.device.Update()
 	if err != nil {
@@ -170,14 +141,24 @@ func (prg *Program) checkForChanges() error {
 	versionChange := prg.device.DidVersionChange()
 	if versionChange {
 		prg.logger.Infof("Device Version Change")
+		err := prg.uc.DoBoth()
+		if err != nil {
+			return err
+		}
 	}
 	stopChange := prg.device.DidStopChange()
 	if stopChange {
 		prg.logger.Infof("Device Stop Change")
 		if prg.device.Stopped() {
-			prg.internalStop()
+			err := prg.internalStop()
+			if err != nil {
+				return err
+			}
 		} else {
-			prg.internalStart()
+			err := prg.internalStart()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

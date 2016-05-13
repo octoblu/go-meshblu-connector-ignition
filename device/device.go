@@ -1,6 +1,8 @@
 package device
 
 import (
+	"strings"
+
 	"github.com/octoblu/go-meshblu/config"
 	"github.com/octoblu/go-meshblu/http/meshblu"
 )
@@ -95,5 +97,6 @@ func (client *Client) Stopped() bool {
 
 // Version return connector version
 func (client *Client) Version() string {
-	return client.meshbluDevice.Connector.Version
+	version := client.meshbluDevice.Connector.Version
+	return strings.Replace(version, "v", "", 1)
 }

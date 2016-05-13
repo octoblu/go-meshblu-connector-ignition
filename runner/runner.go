@@ -72,6 +72,8 @@ func (client *Client) Start() error {
 		return err
 	}
 
+	client.prg.uc = NewUpdateConnector(client.prg)
+
 	err = srv.Run()
 	if err != nil {
 		return err

@@ -14,6 +14,8 @@ type Config struct {
 	DisplayName   string
 	Description   string
 	ConnectorName string
+	GithubSlug    string
+	Tag           string
 	BinPath       string
 	Legacy        bool
 	Dir           string
