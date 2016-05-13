@@ -5,8 +5,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/kardianos/service"
+	"github.com/octoblu/go-meshblu-connector-ignition/device"
 )
 
 // Program inteface that is real
@@ -15,17 +17,40 @@ type Program struct {
 	srv    service.Service
 	logger service.Logger
 	cmd    *exec.Cmd
+	device device.Device
 	exit   chan struct{}
 }
 
 // Start service but really
 func (prg *Program) Start(srv service.Service) error {
-	commandPath := prg.getCommandPath()
 	if prg.config.Legacy {
 		err := prg.npmInstall()
 		if err != nil {
 			return err
 		}
+	}
+	if prg.device.Stopped() {
+		for {
+			err := prg.device.Update()
+			if err != nil {
+				return err
+			}
+			prg.logger.Info("Device stopped, waiting for device to change")
+			if prg.device.Stopped() {
+				time.Sleep(30 * time.Second)
+			} else {
+				prg.logger.Info("State Changed to Started")
+				break
+			}
+		}
+	}
+
+	return prg.internalStart()
+}
+
+func (prg *Program) internalStart() error {
+	commandPath := prg.getCommandPath()
+	if prg.config.Legacy {
 		commandPath = prg.getLegacyCommandPath()
 	}
 	nodeCommand, err := prg.TheExecutable("node")
@@ -41,6 +66,7 @@ func (prg *Program) Start(srv service.Service) error {
 }
 
 func (prg *Program) run() {
+
 	prg.logger.Info("Starting ", prg.config.DisplayName)
 
 	if service.Interactive() {
@@ -59,23 +85,34 @@ func (prg *Program) run() {
 		prg.cmd.Stdout = stdOutFile
 	}
 
+	prg.checkForChangesInterval()
+
 	err := prg.cmd.Run()
 	if err != nil {
 		prg.logger.Warningf("Error running: %v", err)
 	}
-	return
 }
 
 // Stop service but really
 func (prg *Program) Stop(srv service.Service) error {
 	close(prg.exit)
 	prg.logger.Info("Stopping ", prg.config.DisplayName)
-	if prg.cmd != nil {
-		prg.cmd.Process.Kill()
+
+	err := prg.internalStop()
+	if err != nil {
+		return err
 	}
 
 	if service.Interactive() {
 		os.Exit(0)
+	}
+	return nil
+}
+
+func (prg *Program) internalStop() error {
+	prg.logger.Info("Internal Stopping ", prg.config.DisplayName)
+	if prg.cmd != nil {
+		prg.cmd.Process.Kill()
 	}
 	return nil
 }
@@ -122,6 +159,41 @@ func (prg *Program) npmInstall() error {
 		prg.logger.Warningf("Error running npm: %v", err)
 	}
 	return err
+}
+
+func (prg *Program) checkForChanges() error {
+	err := prg.device.Update()
+	if err != nil {
+		prg.logger.Warningf("Device Update Error: %v", err.Error())
+		return err
+	}
+	versionChange := prg.device.DidVersionChange()
+	if versionChange {
+		prg.logger.Infof("Device Version Change")
+	}
+	stopChange := prg.device.DidStopChange()
+	if stopChange {
+		prg.logger.Infof("Device Stop Change")
+		if prg.device.Stopped() {
+			prg.internalStop()
+		} else {
+			prg.internalStart()
+		}
+	}
+	return nil
+}
+
+func (prg *Program) checkForChangesInterval() {
+	ticker := time.NewTicker(30 * time.Second)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				prg.checkForChanges()
+			}
+		}
+	}()
 }
 
 func (prg *Program) getFullConnectorName() string {

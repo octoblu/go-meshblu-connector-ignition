@@ -2,8 +2,10 @@ package runner
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/kardianos/service"
+	"github.com/octoblu/go-meshblu-connector-ignition/device"
 )
 
 // Runner defines the interface to run a Cmd
@@ -58,6 +60,17 @@ func (client *Client) Start() error {
 			}
 		}
 	}()
+
+	meshbluConfigPath := filepath.Join(client.prg.config.Dir, "meshblu.json")
+	deviceClient, err := device.New(meshbluConfigPath)
+	if err != nil {
+		return err
+	}
+	client.prg.device = deviceClient
+	err = client.prg.device.Update()
+	if err != nil {
+		return err
+	}
 
 	err = srv.Run()
 	if err != nil {

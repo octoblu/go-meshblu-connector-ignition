@@ -1,0 +1,34 @@
+#!/bin/bash
+
+CONNECTOR_DIR="$HOME/.octoblu/MeshbluConnectors"
+
+build() {
+  echo "building..."
+  go build
+}
+
+copy() {
+  echo "copying..."
+  local uuid="$1"
+  cp ./go-meshblu-connector-ignition "$CONNECTOR_DIR/$uuid/start"
+}
+
+run() {
+  echo "running..."
+  local uuid="$1"
+  pushd "$CONNECTOR_DIR/$uuid" > /dev/null
+    ./start
+  popd > /dev/null
+}
+
+main() {
+  local uuid="$1"
+  if [ -z "$uuid" ]; then
+    echo "Missing UUID as first param"
+    exit 1
+  fi
+  build
+  copy "$uuid"
+  run "$uuid"
+}
+main "$@"
