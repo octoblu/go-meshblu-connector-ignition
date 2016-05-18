@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/kardianos/service"
@@ -58,6 +59,12 @@ func (uc *UpdateConnector) Do() error {
 func (uc *UpdateConnector) DoLegacy() error {
 	uc.prg.logger.Info("Updating Legacy Connector")
 	prg := uc.prg
+
+	err := os.RemoveAll(filepath.Join(prg.config.Dir, "node_modules"))
+	if err != nil {
+		return err
+	}
+
 	npmCommand, err := prg.TheExecutable("npm")
 	if err != nil {
 		return err
