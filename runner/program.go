@@ -7,19 +7,35 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jpillora/backoff"
 	"github.com/kardianos/service"
 	"github.com/octoblu/go-meshblu-connector-ignition/device"
 )
 
 // Program inteface that is real
 type Program struct {
-	config *Config
-	srv    service.Service
-	logger service.Logger
-	cmd    *exec.Cmd
-	device device.Device
-	uc     *UpdateConnector
-	exit   chan struct{}
+	config       *Config
+	srv          service.Service
+	logger       service.Logger
+	cmd          *exec.Cmd
+	device       device.Device
+	uc           *UpdateConnector
+	retrySeconds int
+	b            *backoff.Backoff
+	timeStarted  time.Time
+	exit         chan struct{}
+}
+
+// NewProgram creates a new program cient
+func NewProgram(config *Config) *Program {
+	return &Program{
+		config: config,
+		b: &backoff.Backoff{
+			Min: 5 * time.Second,
+			Max: 30 * time.Minute,
+		},
+		exit: make(chan struct{}),
+	}
 }
 
 // Start service but really
@@ -46,10 +62,10 @@ func (prg *Program) Start(srv service.Service) error {
 		}
 	}
 
-	return prg.internalStart()
+	return prg.internalStart(true)
 }
 
-func (prg *Program) internalStart() error {
+func (prg *Program) internalStart(fork bool) error {
 	commandPath := prg.getCommandPath()
 	if prg.config.Legacy {
 		commandPath = prg.getLegacyCommandPath()
@@ -61,7 +77,11 @@ func (prg *Program) internalStart() error {
 	prg.cmd = exec.Command(nodeCommand, commandPath)
 	prg.initCmd(prg.cmd)
 
-	go prg.run()
+	if fork {
+		go prg.run()
+	} else {
+		prg.run()
+	}
 
 	return nil
 }
@@ -73,25 +93,39 @@ func (prg *Program) run() {
 	if service.Interactive() {
 		prg.cmd.Stderr = os.Stderr
 		prg.cmd.Stdout = os.Stdout
-	}
-
-	if prg.config.Stderr != "" {
-		stdErrFile, _ := prg.getStderrFile()
-		defer stdErrFile.Close()
-		prg.cmd.Stderr = stdErrFile
-	}
-	if prg.config.Stdout != "" {
-		stdOutFile, _ := prg.getStdoutFile()
-		defer stdOutFile.Close()
-		prg.cmd.Stdout = stdOutFile
+	} else {
+		if prg.config.Stderr != "" {
+			stdErrFile, _ := prg.getStderrFile()
+			defer stdErrFile.Close()
+			prg.cmd.Stderr = stdErrFile
+		}
+		if prg.config.Stdout != "" {
+			stdOutFile, _ := prg.getStdoutFile()
+			defer stdOutFile.Close()
+			prg.cmd.Stdout = stdOutFile
+		}
 	}
 
 	prg.checkForChangesInterval()
 
+	prg.timeStarted = time.Now()
 	err := prg.cmd.Run()
 	if err != nil {
 		prg.logger.Warningf("Error running: %v", err)
 	}
+	prg.tryAgain()
+}
+
+func (prg *Program) tryAgain() {
+	timeSinceStarted := time.Since(prg.timeStarted)
+	if timeSinceStarted > time.Minute {
+		prg.logger.Infof("Program ran for 1 minute, resetting backoff")
+		prg.b.Reset()
+	}
+	duration := prg.b.Duration()
+	prg.logger.Infof("Restarting in %v seconds", duration)
+	time.Sleep(duration)
+	prg.internalStart(false)
 }
 
 // Stop service but really
@@ -155,7 +189,7 @@ func (prg *Program) checkForChanges() error {
 				return err
 			}
 		} else {
-			err := prg.internalStart()
+			err := prg.internalStart(false)
 			if err != nil {
 				return err
 			}

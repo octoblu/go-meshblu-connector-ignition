@@ -27,10 +27,7 @@ func New(config *Config) Runner {
 
 // Start runs the connector
 func (client *Client) Start() error {
-	client.prg = &Program{
-		config: client.config,
-		exit:   make(chan struct{}),
-	}
+	client.prg = NewProgram(client.config)
 
 	srvConfig := &service.Config{
 		Name:        client.config.ServiceName,

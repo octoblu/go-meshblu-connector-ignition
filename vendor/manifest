@@ -43,6 +43,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/jpillora/backoff",
+			"repository": "https://github.com/jpillora/backoff",
+			"vcs": "git",
+			"revision": "0496a6c14df020789376f4d4a261273d5ddb36ec",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/kardianos/osext",
 			"repository": "https://github.com/kardianos/osext",
 			"vcs": "git",
