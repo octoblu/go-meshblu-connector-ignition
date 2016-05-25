@@ -144,6 +144,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/tj/go-debug",
+			"repository": "https://github.com/tj/go-debug",
+			"vcs": "git",
+			"revision": "ff4a55a20a86994118644bbddc6a216da193cc13",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/visionmedia/go-debug",
 			"repository": "https://github.com/visionmedia/go-debug",
 			"vcs": "git",
