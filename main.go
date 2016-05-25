@@ -8,10 +8,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
 	"github.com/octoblu/go-meshblu-connector-ignition/runner"
-	De "github.com/tj/go-debug"
 )
-
-var debug = De.Debug("meshblu-connector-ignition:main")
 
 func main() {
 	app := cli.NewApp()

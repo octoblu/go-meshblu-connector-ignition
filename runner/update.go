@@ -8,7 +8,6 @@ import (
 	"runtime"
 
 	"github.com/kardianos/service"
-	"github.com/octoblu/go-meshblu-connector-assembler/downloader"
 	"github.com/octoblu/go-meshblu-connector-assembler/extractor"
 )
 
@@ -37,14 +36,7 @@ func (uc *UpdateConnector) Do() error {
 		return err
 	}
 	uc.prg.logger.Info("Updating Connector")
-	cwd := uc.prg.config.Dir
-	downloadClient := downloader.New(cwd)
-	downloadFile, err := downloadClient.Download(uc.getConnectorURI())
-	if err != nil {
-		return err
-	}
-	extractorClient := extractor.New()
-	err = extractorClient.Do(downloadFile, cwd)
+	err = extractor.New().DoWithURI(uc.getConnectorURI(), uc.prg.config.Dir)
 	if err != nil {
 		return err
 	}
