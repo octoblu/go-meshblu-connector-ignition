@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/kardianos/service"
 	"github.com/octoblu/go-meshblu-connector-assembler/extractor"
 )
 
@@ -88,21 +87,9 @@ func (uc *UpdateConnector) runInstall() error {
 
 	cmd := exec.Command(npmCommand, "install", connectorWithVersion)
 	prg.initCmd(cmd)
-	if service.Interactive() {
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-	} else {
-		if prg.config.Stderr != "" {
-			stdErrFile, _ := prg.getStderrFile()
-			defer stdErrFile.Close()
-			cmd.Stderr = stdErrFile
-		}
-		if prg.config.Stdout != "" {
-			stdOutFile, _ := prg.getStdoutFile()
-			defer stdOutFile.Close()
-			cmd.Stdout = stdOutFile
-		}
-	}
+	prg.cmd.Stderr = prg.stderr.Stream()
+	prg.cmd.Stdout = prg.stdout.Stream()
+	defer prg.updateErrors()
 
 	err = cmd.Run()
 	if err != nil {

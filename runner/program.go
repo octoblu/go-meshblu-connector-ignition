@@ -10,6 +10,8 @@ import (
 	"github.com/jpillora/backoff"
 	"github.com/kardianos/service"
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
+	"github.com/octoblu/go-meshblu-connector-ignition/logger"
+	"github.com/octoblu/go-meshblu-connector-ignition/status"
 )
 
 // Program inteface that is real
@@ -19,23 +21,36 @@ type Program struct {
 	logger       service.Logger
 	cmd          *exec.Cmd
 	connector    connector.Connector
+	status       status.Status
 	uc           *UpdateConnector
 	retrySeconds int
 	b            *backoff.Backoff
 	timeStarted  time.Time
+	stderr       logger.Logger
+	stdout       logger.Logger
 	exit         chan struct{}
 }
 
 // NewProgram creates a new program cient
-func NewProgram(config *Config) *Program {
+func NewProgram(config *Config) (*Program, error) {
+	stdout, err := logger.NewLogger(config.Stdout, service.Interactive(), false)
+	if err != nil {
+		return nil, err
+	}
+	stderr, err := logger.NewLogger(config.Stderr, service.Interactive(), true)
+	if err != nil {
+		return nil, err
+	}
 	return &Program{
 		config: config,
 		b: &backoff.Backoff{
 			Min: 5 * time.Second,
 			Max: 30 * time.Minute,
 		},
-		exit: make(chan struct{}),
-	}
+		stderr: stderr,
+		stdout: stdout,
+		exit:   make(chan struct{}),
+	}, nil
 }
 
 // Start service but really
@@ -87,24 +102,10 @@ func (prg *Program) internalStart(fork bool) error {
 }
 
 func (prg *Program) run() {
-
 	prg.logger.Info("Starting ", prg.config.DisplayName)
 
-	if service.Interactive() {
-		prg.cmd.Stderr = os.Stderr
-		prg.cmd.Stdout = os.Stdout
-	} else {
-		if prg.config.Stderr != "" {
-			stdErrFile, _ := prg.getStderrFile()
-			defer stdErrFile.Close()
-			prg.cmd.Stderr = stdErrFile
-		}
-		if prg.config.Stdout != "" {
-			stdOutFile, _ := prg.getStdoutFile()
-			defer stdOutFile.Close()
-			prg.cmd.Stdout = stdOutFile
-		}
-	}
+	prg.cmd.Stderr = prg.stderr.Stream()
+	prg.cmd.Stdout = prg.stdout.Stream()
 
 	prg.checkForChangesInterval()
 
@@ -113,6 +114,7 @@ func (prg *Program) run() {
 	if err != nil {
 		prg.logger.Warningf("Error running: %v", err)
 	}
+	prg.updateErrors()
 	prg.tryAgain()
 }
 
@@ -132,7 +134,8 @@ func (prg *Program) tryAgain() {
 func (prg *Program) Stop(srv service.Service) error {
 	close(prg.exit)
 	prg.logger.Info("Stopping ", prg.config.DisplayName)
-
+	defer prg.stderr.Close()
+	defer prg.stdout.Close()
 	err := prg.internalStop()
 	if err != nil {
 		return err
@@ -140,6 +143,17 @@ func (prg *Program) Stop(srv service.Service) error {
 
 	if service.Interactive() {
 		os.Exit(0)
+	}
+
+	return nil
+}
+
+func (prg *Program) updateErrors() error {
+	err := prg.status.UpdateErrors(prg.stderr.Get())
+	if err != nil {
+		prg.logger.Warningf("Error updating errors")
+	} else {
+		prg.logger.Info("Updated status device with errors")
 	}
 	return nil
 }
@@ -213,24 +227,6 @@ func (prg *Program) checkForChangesInterval() {
 
 func (prg *Program) getFullConnectorName() string {
 	return fmt.Sprintf("meshblu-%s", prg.config.ConnectorName)
-}
-
-func (prg *Program) getStderrFile() (*os.File, error) {
-	file, err := os.OpenFile(prg.config.Stderr, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
-	if err != nil {
-		prg.logger.Warningf("Failed to open stderr %q: %v", prg.config.Stderr, err)
-		return nil, err
-	}
-	return file, nil
-}
-
-func (prg *Program) getStdoutFile() (*os.File, error) {
-	file, err := os.OpenFile(prg.config.Stdout, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
-	if err != nil {
-		prg.logger.Warningf("Failed to open stdout %q: %v", prg.config.Stdout, err)
-		return nil, err
-	}
-	return file, nil
 }
 
 func (prg *Program) getEnv() []string {

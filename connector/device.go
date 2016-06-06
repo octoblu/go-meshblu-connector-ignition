@@ -15,6 +15,8 @@ type Client struct {
 	device        *MeshbluDevice
 	lastDevice    *MeshbluDevice
 	tag           string
+	uuid          string
+	statusUUID    string
 }
 
 // Connector defines the device management interface
@@ -22,38 +24,26 @@ type Connector interface {
 	Fetch() error
 	DidVersionChange() bool
 	DidStopChange() bool
+	StatusUUID() string
 	Stopped() bool
 	Version() string
 	VersionWithV() string
 }
 
 // New creates a new device struct
-func New(configPath, tag string) (Connector, error) {
-	config, err := config.ReadFromConfig(configPath)
-	if err != nil {
-		return nil, err
-	}
-	url, err := config.ToURL()
-	if err != nil {
-		return nil, err
-	}
-	meshbluClient, err := meshblu.Dial(url)
-	if err != nil {
-		return nil, err
-	}
-	meshbluClient.SetAuth(config.UUID, config.Token)
-
+func New(meshbluClient meshblu.Meshblu, uuid, tag string) (Connector, error) {
 	device := &Client{
-		config:        config,
 		meshbluClient: meshbluClient,
+		uuid:          uuid,
 		tag:           tag,
+		statusUUID:    "",
 	}
 	return device, nil
 }
 
 // Fetch updates the device
 func (client *Client) Fetch() error {
-	data, err := client.meshbluClient.GetDevice(client.config.UUID)
+	data, err := client.meshbluClient.GetDevice(client.uuid)
 	if err != nil {
 		return err
 	}
@@ -61,6 +51,11 @@ func (client *Client) Fetch() error {
 	if err != nil {
 		return err
 	}
+	statusUUID, err := ParseMeshbluDeviceForStatusUUID(data)
+	if err != nil {
+		return err
+	}
+	client.statusUUID = statusUUID
 	if client.device != nil {
 		client.lastDevice = CopyMeshbluDevice(client.device)
 	}
@@ -79,6 +74,11 @@ func (client *Client) DidVersionChange() bool {
 		return false
 	}
 	return true
+}
+
+// StatusUUID gets the uuid of the status device attached to the connector
+func (client *Client) StatusUUID() string {
+	return client.statusUUID
 }
 
 // DidStopChange checks to see the version changed from the last fetch

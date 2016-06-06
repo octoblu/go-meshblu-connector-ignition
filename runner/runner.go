@@ -6,6 +6,8 @@ import (
 
 	"github.com/kardianos/service"
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
+	"github.com/octoblu/go-meshblu-connector-ignition/meshblu"
+	"github.com/octoblu/go-meshblu-connector-ignition/status"
 )
 
 // Runner defines the interface to run a Cmd
@@ -27,7 +29,10 @@ func New(config *Config) Runner {
 
 // Start runs the connector
 func (client *Client) Start() error {
-	client.prg = NewProgram(client.config)
+	prg, err := NewProgram(client.config)
+	if err != nil {
+		return err
+	}
 
 	srvConfig := &service.Config{
 		Name:        client.config.ServiceName,
@@ -35,19 +40,19 @@ func (client *Client) Start() error {
 		Description: client.config.Description,
 	}
 
-	srv, err := service.New(client.prg, srvConfig)
+	srv, err := service.New(prg, srvConfig)
 	if err != nil {
 		return err
 	}
 
-	client.prg.srv = srv
+	prg.srv = srv
 
 	errs := make(chan error, 5)
 	logger, err := srv.Logger(errs)
 	if err != nil {
 		return err
 	}
-	client.prg.logger = logger
+	prg.logger = logger
 
 	go func() {
 		for {
@@ -59,17 +64,30 @@ func (client *Client) Start() error {
 	}()
 
 	meshbluConfigPath := filepath.Join(client.config.Dir, "meshblu.json")
-	deviceClient, err := connector.New(meshbluConfigPath, client.config.Tag)
+	meshbluClient, uuid, err := meshblu.NewClient(meshbluConfigPath)
 	if err != nil {
 		return err
 	}
-	err = deviceClient.Fetch()
+	connectorClient, err := connector.New(meshbluClient, uuid, client.config.Tag)
 	if err != nil {
 		return err
 	}
-	client.prg.connector = deviceClient
+	err = connectorClient.Fetch()
+	if err != nil {
+		return err
+	}
+	prg.connector = connectorClient
 
-	client.prg.uc = NewUpdateConnector(client.prg)
+	status, err := status.New(meshbluClient, connectorClient.StatusUUID())
+	if err != nil {
+		return err
+	}
+	err = status.ResetErrors()
+	logger.Info("Resetting errors on status device")
+	prg.status = status
+
+	prg.uc = NewUpdateConnector(prg)
+	client.prg = prg
 
 	err = srv.Run()
 	if err != nil {
