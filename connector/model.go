@@ -1,24 +1,24 @@
-package device
+package connector
 
 import "encoding/json"
 
-// Connector defines the connector metadata
-type Connector struct {
+// Metadata defines the connector metadata
+type Metadata struct {
 	Stopped bool   `json:"stopped"`
 	Version string `json:"version"`
 }
 
 // MeshbluDevice defines the meshblu device
 type MeshbluDevice struct {
-	*Connector `json:"connectorMetadata"`
+	*Metadata `json:"connectorMetadata"`
 }
 
 // ParseMeshbluDevice creates a device from a JSON byte array
 func ParseMeshbluDevice(data []byte, defaultVersion string) (*MeshbluDevice, error) {
 	device := &MeshbluDevice{}
 	err := json.Unmarshal(data, device)
-	if device.Connector == nil {
-		device.Connector = &Connector{
+	if device.Metadata == nil {
+		device.Metadata = &Metadata{
 			Version: defaultVersion,
 			Stopped: false,
 		}
@@ -27,10 +27,10 @@ func ParseMeshbluDevice(data []byte, defaultVersion string) (*MeshbluDevice, err
 }
 
 // CopyMeshbluDevice creates a copy of the device passed in
-func CopyMeshbluDevice(orgDevice *MeshbluDevice) *MeshbluDevice {
-	connector := &Connector{
-		Stopped: orgDevice.Connector.Stopped,
-		Version: orgDevice.Connector.Version,
+func CopyMeshbluDevice(orgMeshbluDevice *MeshbluDevice) *MeshbluDevice {
+	connector := &Metadata{
+		Stopped: orgMeshbluDevice.Metadata.Stopped,
+		Version: orgMeshbluDevice.Metadata.Version,
 	}
 	device := &MeshbluDevice{
 		connector,

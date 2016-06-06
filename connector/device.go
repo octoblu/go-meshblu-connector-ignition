@@ -1,4 +1,4 @@
-package device
+package connector
 
 import (
 	"fmt"
@@ -17,8 +17,8 @@ type Client struct {
 	tag           string
 }
 
-// Device defines the device management interface
-type Device interface {
+// Connector defines the device management interface
+type Connector interface {
 	Update() error
 	DidVersionChange() bool
 	DidStopChange() bool
@@ -28,7 +28,7 @@ type Device interface {
 }
 
 // New creates a new device struct
-func New(configPath, tag string) (Device, error) {
+func New(configPath, tag string) (Connector, error) {
 	config, err := config.ReadFromConfig(configPath)
 	if err != nil {
 		return nil, err
@@ -73,8 +73,8 @@ func (client *Client) DidVersionChange() bool {
 	if client.lastDevice == nil {
 		return false
 	}
-	last := client.lastDevice.Connector.Version
-	current := client.meshbluDevice.Connector.Version
+	last := client.lastDevice.Metadata.Version
+	current := client.meshbluDevice.Metadata.Version
 	if last == current {
 		return false
 	}
@@ -86,8 +86,8 @@ func (client *Client) DidStopChange() bool {
 	if client.lastDevice == nil {
 		return false
 	}
-	last := client.lastDevice.Connector.Stopped
-	current := client.meshbluDevice.Connector.Stopped
+	last := client.lastDevice.Metadata.Stopped
+	current := client.meshbluDevice.Metadata.Stopped
 	if last == current {
 		return false
 	}
@@ -96,12 +96,12 @@ func (client *Client) DidStopChange() bool {
 
 // Stopped return the boolean true if the connector stopped
 func (client *Client) Stopped() bool {
-	return client.meshbluDevice.Connector.Stopped
+	return client.meshbluDevice.Metadata.Stopped
 }
 
 // Version return connector version
 func (client *Client) Version() string {
-	version := client.meshbluDevice.Connector.Version
+	version := client.meshbluDevice.Metadata.Version
 	return strings.Replace(version, "v", "", 1)
 }
 

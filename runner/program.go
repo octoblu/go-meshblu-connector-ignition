@@ -9,7 +9,7 @@ import (
 
 	"github.com/jpillora/backoff"
 	"github.com/kardianos/service"
-	"github.com/octoblu/go-meshblu-connector-ignition/device"
+	"github.com/octoblu/go-meshblu-connector-ignition/connector"
 )
 
 // Program inteface that is real
@@ -18,7 +18,7 @@ type Program struct {
 	srv          service.Service
 	logger       service.Logger
 	cmd          *exec.Cmd
-	device       device.Device
+	connector    connector.Connector
 	uc           *UpdateConnector
 	retrySeconds int
 	b            *backoff.Backoff
@@ -46,14 +46,14 @@ func (prg *Program) Start(srv service.Service) error {
 			return err
 		}
 	}
-	if prg.device.Stopped() {
+	if prg.connector.Stopped() {
 		for {
-			err := prg.device.Update()
+			err := prg.connector.Update()
 			if err != nil {
 				return err
 			}
-			prg.logger.Info("Device stopped, waiting for device to change")
-			if prg.device.Stopped() {
+			prg.logger.Info("Device stopped, waiting for connector to change")
+			if prg.connector.Stopped() {
 				time.Sleep(30 * time.Second)
 			} else {
 				prg.logger.Info("State Changed to Started")
@@ -167,23 +167,23 @@ func (prg *Program) getLegacyCommandPath() string {
 }
 
 func (prg *Program) checkForChanges() error {
-	err := prg.device.Update()
+	err := prg.connector.Update()
 	if err != nil {
 		prg.logger.Warningf("Device Update Error: %v", err.Error())
 		return err
 	}
-	versionChange := prg.device.DidVersionChange()
+	versionChange := prg.connector.DidVersionChange()
 	if versionChange {
-		prg.logger.Infof("Device Version Change %v", prg.device.Version())
+		prg.logger.Infof("Device Version Change %v", prg.connector.Version())
 		err := prg.uc.DoBoth()
 		if err != nil {
 			return err
 		}
 	}
-	stopChange := prg.device.DidStopChange()
+	stopChange := prg.connector.DidStopChange()
 	if stopChange {
 		prg.logger.Infof("Device Stop Change")
-		if prg.device.Stopped() {
+		if prg.connector.Stopped() {
 			err := prg.internalStop()
 			if err != nil {
 				return err

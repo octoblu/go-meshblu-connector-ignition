@@ -80,7 +80,7 @@ func (uc *UpdateConnector) runInstall() error {
 	if err != nil {
 		return err
 	}
-	version := prg.device.Version()
+	version := prg.connector.Version()
 	connectorWithVersion := prg.getFullConnectorName()
 	if version == "" {
 		connectorWithVersion = fmt.Sprintf("%s@%s", connectorWithVersion, version)
@@ -126,5 +126,5 @@ func (uc *UpdateConnector) getConnectorURI() string {
 		ext = "zip"
 	}
 	fileName := fmt.Sprintf("%s-%s-%s.%s", config.ConnectorName, runtime.GOOS, runtime.GOARCH, ext)
-	return fmt.Sprintf("%s/%s/%s", baseURI, uc.prg.device.VersionWithV(), fileName)
+	return fmt.Sprintf("%s/%s/%s", baseURI, uc.prg.connector.VersionWithV(), fileName)
 }
