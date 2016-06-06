@@ -12,14 +12,14 @@ import (
 type Client struct {
 	config        *config.Config
 	meshbluClient meshblu.Meshblu
-	meshbluDevice *MeshbluDevice
+	device        *MeshbluDevice
 	lastDevice    *MeshbluDevice
 	tag           string
 }
 
 // Connector defines the device management interface
 type Connector interface {
-	Update() error
+	Fetch() error
 	DidVersionChange() bool
 	DidStopChange() bool
 	Stopped() bool
@@ -51,20 +51,20 @@ func New(configPath, tag string) (Connector, error) {
 	return device, nil
 }
 
-// Update updates the device
-func (client *Client) Update() error {
+// Fetch updates the device
+func (client *Client) Fetch() error {
 	data, err := client.meshbluClient.GetDevice(client.config.UUID)
 	if err != nil {
 		return err
 	}
-	meshbluDevice, err := ParseMeshbluDevice(data, client.tag)
+	device, err := ParseMeshbluDevice(data, client.tag)
 	if err != nil {
 		return err
 	}
-	if client.meshbluDevice != nil {
-		client.lastDevice = CopyMeshbluDevice(client.meshbluDevice)
+	if client.device != nil {
+		client.lastDevice = CopyMeshbluDevice(client.device)
 	}
-	client.meshbluDevice = meshbluDevice
+	client.device = device
 	return nil
 }
 
@@ -74,7 +74,7 @@ func (client *Client) DidVersionChange() bool {
 		return false
 	}
 	last := client.lastDevice.Metadata.Version
-	current := client.meshbluDevice.Metadata.Version
+	current := client.device.Metadata.Version
 	if last == current {
 		return false
 	}
@@ -87,7 +87,7 @@ func (client *Client) DidStopChange() bool {
 		return false
 	}
 	last := client.lastDevice.Metadata.Stopped
-	current := client.meshbluDevice.Metadata.Stopped
+	current := client.device.Metadata.Stopped
 	if last == current {
 		return false
 	}
@@ -96,12 +96,12 @@ func (client *Client) DidStopChange() bool {
 
 // Stopped return the boolean true if the connector stopped
 func (client *Client) Stopped() bool {
-	return client.meshbluDevice.Metadata.Stopped
+	return client.device.Metadata.Stopped
 }
 
 // Version return connector version
 func (client *Client) Version() string {
-	version := client.meshbluDevice.Metadata.Version
+	version := client.device.Metadata.Version
 	return strings.Replace(version, "v", "", 1)
 }
 

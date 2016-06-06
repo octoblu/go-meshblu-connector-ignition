@@ -63,7 +63,7 @@ func (client *Client) Start() error {
 	if err != nil {
 		return err
 	}
-	err = deviceClient.Update()
+	err = deviceClient.Fetch()
 	if err != nil {
 		return err
 	}

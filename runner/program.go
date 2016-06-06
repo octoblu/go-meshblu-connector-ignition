@@ -48,7 +48,7 @@ func (prg *Program) Start(srv service.Service) error {
 	}
 	if prg.connector.Stopped() {
 		for {
-			err := prg.connector.Update()
+			err := prg.connector.Fetch()
 			if err != nil {
 				return err
 			}
@@ -167,7 +167,7 @@ func (prg *Program) getLegacyCommandPath() string {
 }
 
 func (prg *Program) checkForChanges() error {
-	err := prg.connector.Update()
+	err := prg.connector.Fetch()
 	if err != nil {
 		prg.logger.Warningf("Device Update Error: %v", err.Error())
 		return err

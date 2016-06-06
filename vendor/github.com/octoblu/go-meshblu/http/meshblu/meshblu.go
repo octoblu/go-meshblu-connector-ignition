@@ -2,6 +2,7 @@ package meshblu
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -12,6 +13,7 @@ import (
 type Meshblu interface {
 	SetAuth(uuid, token string)
 	GetDevice(uuid string) ([]byte, error)
+	UpdateDevice(uuid string, body io.Reader) ([]byte, error)
 }
 
 // Client interfaces with a remote meshblu server
@@ -34,10 +36,15 @@ func (client *Client) SetAuth(uuid, token string) {
 
 // GetDevice returns a byte response of the meshblu device
 func (client *Client) GetDevice(uuid string) ([]byte, error) {
-	return client.request("GET", fmt.Sprintf("/v2/devices/%s", uuid))
+	return client.request("GET", fmt.Sprintf("/v2/devices/%s", uuid), nil)
 }
 
-func (client *Client) request(method, path string) ([]byte, error) {
+// UpdateDevice returns a byte response of the meshblu device
+func (client *Client) UpdateDevice(uuid string, body io.Reader) ([]byte, error) {
+	return client.request("PATCH", fmt.Sprintf("/v2/devices/%s", uuid), body)
+}
+
+func (client *Client) request(method, path string, body io.Reader) ([]byte, error) {
 	meshbluURL, err := config.ParseURL(client.uri)
 	if err != nil {
 		return nil, err
@@ -45,11 +52,16 @@ func (client *Client) request(method, path string) ([]byte, error) {
 	meshbluURL.SetPath(path)
 
 	httpClient := &http.Client{}
-	request, err := http.NewRequest(method, meshbluURL.String(), nil)
+	request, err := http.NewRequest(method, meshbluURL.String(), body)
 	request.SetBasicAuth(client.uuid, client.token)
 	if err != nil {
 		return nil, err
 	}
+
+	request.Header.Add("Connection", "Keep-Alive")
+	request.Header.Add("Keep-Alive", "timeout=30,max=15")
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Accept", "application/json")
 
 	response, err := httpClient.Do(request)
 	if err != nil {

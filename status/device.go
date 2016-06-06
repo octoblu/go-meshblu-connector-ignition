@@ -1,48 +1,31 @@
 package status
 
-import (
-	"github.com/octoblu/go-meshblu/config"
-	"github.com/octoblu/go-meshblu/http/meshblu"
-)
+import "github.com/octoblu/go-meshblu/http/meshblu"
 
 // Client defines the meshblu info
 type Client struct {
-	config        *config.Config
 	meshbluClient meshblu.Meshblu
 	meshbluDevice *MeshbluDevice
+	uuid          string
 }
 
-// Device defines the device management interface
-type Device interface {
-	Update() error
+// Status defines the device management interface
+type Status interface {
+	Fetch() error
+	UpdateErrors(errors []string) error
 }
 
-// New creates a new device struct
-func New(configPath, tag string) (Device, error) {
-	config, err := config.ReadFromConfig(configPath)
-	if err != nil {
-		return nil, err
-	}
-	url, err := config.ToURL()
-	if err != nil {
-		return nil, err
-	}
-	meshbluClient, err := meshblu.Dial(url)
-	if err != nil {
-		return nil, err
-	}
-	meshbluClient.SetAuth(config.UUID, config.Token)
-
+// New creates a new status struct
+func New(meshbluClient meshblu.Meshblu, uuid string) (Status, error) {
 	device := &Client{
-		config:        config,
 		meshbluClient: meshbluClient,
 	}
 	return device, nil
 }
 
-// Update updates the device
-func (client *Client) Update() error {
-	data, err := client.meshbluClient.GetDevice(client.config.UUID)
+// Fetch updates the device
+func (client *Client) Fetch() error {
+	data, err := client.meshbluClient.GetDevice(client.uuid)
 	if err != nil {
 		return err
 	}
@@ -52,4 +35,14 @@ func (client *Client) Update() error {
 	}
 	client.meshbluDevice = meshbluDevice
 	return nil
+}
+
+// UpdateErrors updates the status device with the errors
+func (client *Client) UpdateErrors(errors []string) error {
+	body, err := NewUpdateErrorsBody(errors)
+	if err != nil {
+		return err
+	}
+	_, err = client.meshbluClient.UpdateDevice(client.uuid, body)
+	return err
 }

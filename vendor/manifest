@@ -104,7 +104,7 @@
 			"importpath": "github.com/octoblu/go-meshblu/config",
 			"repository": "https://github.com/octoblu/go-meshblu",
 			"vcs": "git",
-			"revision": "221931697cdc5ef48a99b4bc16c7978150832f1e",
+			"revision": "49da46f1f7c7ef571a08ccfe0f29988b2bc7f01a",
 			"branch": "master",
 			"path": "/config",
 			"notests": true
@@ -113,7 +113,7 @@
 			"importpath": "github.com/octoblu/go-meshblu/http/meshblu",
 			"repository": "https://github.com/octoblu/go-meshblu",
 			"vcs": "git",
-			"revision": "221931697cdc5ef48a99b4bc16c7978150832f1e",
+			"revision": "49da46f1f7c7ef571a08ccfe0f29988b2bc7f01a",
 			"branch": "master",
 			"path": "/http/meshblu",
 			"notests": true
