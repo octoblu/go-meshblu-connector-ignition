@@ -55,12 +55,6 @@ func NewProgram(config *Config) (*Program, error) {
 
 // Start service but really
 func (prg *Program) Start(srv service.Service) error {
-	if prg.config.Legacy {
-		err := prg.uc.DoLegacy()
-		if err != nil {
-			return err
-		}
-	}
 	if prg.connector.Stopped() {
 		for {
 			err := prg.connector.Fetch()
@@ -82,9 +76,6 @@ func (prg *Program) Start(srv service.Service) error {
 
 func (prg *Program) internalStart(fork bool) error {
 	commandPath := prg.getCommandPath()
-	if prg.config.Legacy {
-		commandPath = prg.getLegacyCommandPath()
-	}
 	nodeCommand, err := prg.TheExecutable("node")
 	if err != nil {
 		return err
@@ -176,10 +167,6 @@ func (prg *Program) getCommandPath() string {
 	return fmt.Sprintf(".%s%s", string(filepath.Separator), filepath.Join("node_modules", "meshblu-connector-runner", "command.js"))
 }
 
-func (prg *Program) getLegacyCommandPath() string {
-	return fmt.Sprintf(".%s%s", string(filepath.Separator), filepath.Join("node_modules", prg.getFullConnectorName(), "command.js"))
-}
-
 func (prg *Program) checkForChanges() error {
 	err := prg.connector.Fetch()
 	if err != nil {
@@ -189,7 +176,7 @@ func (prg *Program) checkForChanges() error {
 	versionChange := prg.connector.DidVersionChange()
 	if versionChange {
 		prg.logger.Infof("Device Version Change %v", prg.connector.Version())
-		err := prg.uc.DoBoth()
+		err := prg.uc.Do()
 		if err != nil {
 			return err
 		}

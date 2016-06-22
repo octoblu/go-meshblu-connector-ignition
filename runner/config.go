@@ -10,17 +10,14 @@ import (
 
 // Config is the runner connector config structure.
 type Config struct {
-	ServiceName   string
-	DisplayName   string
-	Description   string
-	ConnectorName string
-	GithubSlug    string
-	Tag           string
-	BinPath       string
-	Legacy        bool
-	LegacyTag     string
-	Dir           string
-
+	ServiceName    string
+	DisplayName    string
+	Description    string
+	ConnectorName  string
+	GithubSlug     string
+	Tag            string
+	BinPath        string
+	Dir            string
 	Stderr, Stdout string
 }
 

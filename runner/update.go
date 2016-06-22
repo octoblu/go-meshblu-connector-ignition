@@ -2,9 +2,6 @@ package runner
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
 
 	"github.com/octoblu/go-meshblu-connector-assembler/extractor"
@@ -18,14 +15,6 @@ type UpdateConnector struct {
 // NewUpdateConnector creates an instance of the UpdateConnector
 func NewUpdateConnector(prg *Program) *UpdateConnector {
 	return &UpdateConnector{prg}
-}
-
-// DoBoth handles either the legacy or new
-func (uc *UpdateConnector) DoBoth() error {
-	if uc.prg.config.Legacy {
-		return uc.DoLegacy()
-	}
-	return uc.Do()
 }
 
 // Do downloads and extracts the update
@@ -46,65 +35,6 @@ func (uc *UpdateConnector) Do() error {
 	return nil
 }
 
-// DoLegacy downloads and extracts the update
-func (uc *UpdateConnector) DoLegacy() error {
-	uc.prg.logger.Info("Updating Legacy Connector")
-	err := uc.prg.internalStop()
-	if err != nil {
-		return err
-	}
-
-	err = uc.runInstall()
-	if err != nil {
-		err = uc.clearModules()
-		if err != nil {
-			return err
-		}
-		err = uc.runInstall()
-	}
-	if err != nil {
-		return err
-	}
-
-	err = uc.prg.internalStart(true)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (uc *UpdateConnector) runInstall() error {
-	prg := uc.prg
-	npmCommand, err := prg.TheExecutable("npm")
-	if err != nil {
-		return err
-	}
-	version := prg.connector.Version()
-	connectorWithVersion := prg.getFullConnectorName()
-	if version == "" {
-		connectorWithVersion = fmt.Sprintf("%s@%s", connectorWithVersion, version)
-	}
-
-	cmd := exec.Command(npmCommand, "install", connectorWithVersion)
-	prg.initCmd(cmd)
-	prg.cmd.Stderr = prg.stderr.Stream()
-	prg.cmd.Stdout = prg.stdout.Stream()
-	defer prg.updateErrors()
-
-	err = cmd.Run()
-	if err != nil {
-		prg.logger.Warningf("Error running npm: %v", err)
-		return err
-	}
-	return nil
-}
-
-func (uc *UpdateConnector) clearModules() error {
-	uc.prg.logger.Info("Removing node_modules and trying again...")
-	return os.RemoveAll(filepath.Join(uc.prg.config.Dir, "node_modules"))
-}
-
-// getConnectorURI gets the OS specific connector path
 func (uc *UpdateConnector) getConnectorURI() string {
 	config := uc.prg.config
 	baseURI := fmt.Sprintf("https://github.com/%s/releases/download", config.GithubSlug)
