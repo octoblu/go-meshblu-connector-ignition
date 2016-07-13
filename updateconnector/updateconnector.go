@@ -1,6 +1,8 @@
 package updateconnector
 
 import (
+	"fmt"
+
 	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 	"github.com/spf13/afero"
 )
@@ -22,11 +24,13 @@ func New(config *runner.Config, fs afero.Fs) (UpdateConnector, error) {
 		fs = afero.NewOsFs()
 	}
 	updateConfig, err := NewUpdateConfig(fs)
-	if err == nil {
+	if err != nil {
+		fmt.Println("err config", err)
 		return nil, err
 	}
 	err = updateConfig.Load()
-	if err == nil {
+	if err != nil {
+		fmt.Println("err load", err)
 		return nil, err
 	}
 	return &updater{

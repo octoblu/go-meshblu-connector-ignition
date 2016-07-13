@@ -46,6 +46,13 @@ func NewUpdateConfig(fs afero.Fs) (UpdateConfig, error) {
 
 // Load get the service config
 func (c *config) Load() error {
+	exists, err := afero.Exists(c.fs, c.path)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
 	f, err := c.fs.Open(c.path)
 	if err != nil {
 		return err
