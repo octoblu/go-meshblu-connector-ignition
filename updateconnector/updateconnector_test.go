@@ -1,7 +1,6 @@
 package updateconnector_test
 
 import (
-	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 
 	. "github.com/onsi/ginkgo"
@@ -12,24 +11,11 @@ import (
 var _ = Describe("UpdateConnector", func() {
 	var sut updateconnector.UpdateConnector
 
-	config := &runner.Config{
-		ServiceName:   "TestConnector",
-		DisplayName:   "TestConnector DisplayName",
-		Description:   "TestConnector Description",
-		ConnectorName: "test",
-		GithubSlug:    "testblu/meshblu-connector-test",
-		Tag:           "v1.0.0",
-		BinPath:       "path/to/bin",
-		Dir:           "path/to/connector",
-		Stderr:        "path/to/stderr",
-		Stdout:        "path/to/stdout",
-	}
-
 	Describe("->New", func() {
 		var err error
 		fs := afero.NewMemMapFs()
 		BeforeEach(func() {
-			sut, err = updateconnector.New(config, fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
 		})
 
 		It("should not return a error", func() {
@@ -55,7 +41,7 @@ var _ = Describe("UpdateConnector", func() {
 			if err != nil {
 				return
 			}
-			sut, err = updateconnector.New(config, fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
 		})
 
 		It("should not have error", func() {
@@ -95,7 +81,7 @@ var _ = Describe("UpdateConnector", func() {
 			if err != nil {
 				return
 			}
-			sut, err = updateconnector.New(config, fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
 		})
 
 		It("should not have error", func() {
@@ -126,7 +112,7 @@ var _ = Describe("UpdateConnector", func() {
 		fs := afero.NewMemMapFs()
 
 		BeforeEach(func() {
-			sut, err = updateconnector.New(config, fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
 		})
 
 		It("should not have error", func() {

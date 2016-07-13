@@ -8,6 +8,7 @@ import (
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
 	"github.com/octoblu/go-meshblu-connector-ignition/meshblu"
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
+	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 )
 
 // Runner defines the interface to run a Cmd
@@ -86,7 +87,14 @@ func (client *Client) Start() error {
 	logger.Info("Resetting errors on status device")
 	prg.status = status
 
-	prg.uc = NewUpdateConnector(prg)
+	githubSlug := prg.config.GithubSlug
+	connectorName := prg.config.ConnectorName
+	dir := prg.config.Dir
+	uc, err := updateconnector.New(githubSlug, connectorName, dir, nil)
+	if err != nil {
+		return err
+	}
+	prg.uc = uc
 	client.prg = prg
 
 	err = srv.Run()

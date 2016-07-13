@@ -2,48 +2,72 @@ package updateconnector
 
 import (
 	"fmt"
+	"runtime"
 
-	"github.com/octoblu/go-meshblu-connector-ignition/runner"
+	"github.com/octoblu/go-meshblu-connector-assembler/extractor"
 	"github.com/spf13/afero"
 )
 
 // UpdateConnector is an interface to handing updating the connector files
 type UpdateConnector interface {
 	NeedsUpdate(tag string) (bool, error)
+	Do(tag string) error
 }
 
 type updater struct {
-	config       *runner.Config
-	updateConfig UpdateConfig
-	fs           afero.Fs
+	githubSlug    string
+	connectorName string
+	dir           string
+	updateConfig  UpdateConfig
+	fs            afero.Fs
 }
 
 // New returns an instance of the UpdateConnector
-func New(config *runner.Config, fs afero.Fs) (UpdateConnector, error) {
+func New(githubSlug, connectorName, dir string, fs afero.Fs) (UpdateConnector, error) {
 	if fs == nil {
 		fs = afero.NewOsFs()
 	}
 	updateConfig, err := NewUpdateConfig(fs)
 	if err != nil {
-		fmt.Println("err config", err)
-		return nil, err
-	}
-	err = updateConfig.Load()
-	if err != nil {
-		fmt.Println("err load", err)
 		return nil, err
 	}
 	return &updater{
-		config:       config,
-		fs:           fs,
-		updateConfig: updateConfig,
+		githubSlug:    githubSlug,
+		connectorName: connectorName,
+		dir:           dir,
+		fs:            fs,
+		updateConfig:  updateConfig,
 	}, nil
 }
 
 // NeedsUpdate returns if the connector needs to updated
 func (u *updater) NeedsUpdate(tag string) (bool, error) {
+	err := u.updateConfig.Load()
+	if err != nil {
+		return false, err
+	}
 	if u.updateConfig.GetTag() == tag {
 		return false, nil
 	}
 	return true, nil
+}
+
+// Do updates the connector
+func (u *updater) Do(tag string) error {
+	uri := u.getDownloadURI(tag)
+	err := extractor.New().DoWithURI(uri, u.dir)
+	if err != nil {
+		return err
+	}
+	return u.updateConfig.Write(tag)
+}
+
+func (u *updater) getDownloadURI(tag string) string {
+	baseURI := fmt.Sprintf("https://github.com/%s/releases/download", u.githubSlug)
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	fileName := fmt.Sprintf("%s-%s-%s.%s", u.connectorName, runtime.GOOS, runtime.GOARCH, ext)
+	return fmt.Sprintf("%s/%s/%s", baseURI, tag, fileName)
 }

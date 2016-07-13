@@ -12,6 +12,7 @@ import (
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
 	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
+	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 )
 
 // Program inteface that is real
@@ -22,10 +23,11 @@ type Program struct {
 	cmd          *exec.Cmd
 	connector    connector.Connector
 	status       status.Status
-	uc           *UpdateConnector
+	uc           updateconnector.UpdateConnector
 	retrySeconds int
 	b            *backoff.Backoff
 	timeStarted  time.Time
+	running      bool
 	stderr       logger.Logger
 	stdout       logger.Logger
 	exit         chan struct{}
@@ -47,9 +49,10 @@ func NewProgram(config *Config) (*Program, error) {
 			Min: 5 * time.Second,
 			Max: 30 * time.Minute,
 		},
-		stderr: stderr,
-		stdout: stdout,
-		exit:   make(chan struct{}),
+		running: false,
+		stderr:  stderr,
+		stdout:  stdout,
+		exit:    make(chan struct{}),
 	}, nil
 }
 
@@ -75,12 +78,13 @@ func (prg *Program) Start(srv service.Service) error {
 }
 
 func (prg *Program) internalStart(fork bool) error {
-	needsUpdate, err := prg.uc.NeedsUpdate()
+	tag := prg.connector.VersionWithV()
+	needsUpdate, err := prg.uc.NeedsUpdate(tag)
 	if err != nil {
 		return err
 	}
 	if needsUpdate {
-		prg.uc.Do()
+		prg.uc.Do(tag)
 	}
 	commandPath := prg.getCommandPath()
 	nodeCommand, err := prg.TheExecutable("node")
@@ -101,7 +105,7 @@ func (prg *Program) internalStart(fork bool) error {
 
 func (prg *Program) run() {
 	prg.logger.Info("Starting ", prg.config.DisplayName)
-
+	prg.running = true
 	prg.cmd.Stderr = prg.stderr.Stream()
 	prg.cmd.Stdout = prg.stdout.Stream()
 
@@ -111,6 +115,7 @@ func (prg *Program) run() {
 	err := prg.cmd.Run()
 	if err != nil {
 		prg.logger.Warningf("Error running: %v", err)
+		prg.running = false
 	}
 	prg.updateErrors()
 	prg.tryAgain()
@@ -183,7 +188,7 @@ func (prg *Program) checkForChanges() error {
 	versionChange := prg.connector.DidVersionChange()
 	if versionChange {
 		prg.logger.Infof("Device Version Change %v", prg.connector.Version())
-		err := prg.uc.Do()
+		err := prg.update()
 		if err != nil {
 			return err
 		}
@@ -201,6 +206,34 @@ func (prg *Program) checkForChanges() error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func (prg *Program) update() error {
+	tag := prg.connector.VersionWithV()
+	needsUpdate, err := prg.uc.NeedsUpdate(tag)
+	if err != nil {
+		return err
+	}
+	if !needsUpdate {
+		return nil
+	}
+	if prg.running {
+		err := prg.internalStop()
+		if err != nil {
+			return err
+		}
+	}
+	err = prg.uc.Do(tag)
+	if err != nil {
+		return err
+	}
+	if !prg.running {
+		err = prg.internalStart(false)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
