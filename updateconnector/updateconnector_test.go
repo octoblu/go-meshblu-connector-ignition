@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/afero"
 )
 
 var _ = Describe("UpdateConnector", func() {
@@ -25,19 +26,31 @@ var _ = Describe("UpdateConnector", func() {
 	}
 
 	Describe("->New", func() {
+		fs := afero.NewMemMapFs()
 		It("should produce an instance", func() {
-			Expect(updateconnector.New(config)).NotTo(BeNil())
+			Expect(updateconnector.New(config, fs)).NotTo(BeNil())
 		})
 	})
 
-	Describe("with an instance", func() {
+	Describe("with an existing update config", func() {
 		var err error
+		fs := afero.NewMemMapFs()
+		updateConfig, updateConfigErr := updateconnector.NewUpdateConfig(fs)
+
+		It("should not have update config err", func() {
+			Expect(updateConfigErr).ToNot(HaveOccurred())
+		})
+
 		BeforeEach(func() {
-			sut, err = updateconnector.New(config)
+			err = updateConfig.Write("v1.0.0")
+			if err != nil {
+				return
+			}
+			sut, err = updateconnector.New(config, fs)
 		})
 
 		It("should not have error", func() {
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Describe("sut.NeedsUpdate", func() {
@@ -45,11 +58,43 @@ var _ = Describe("UpdateConnector", func() {
 				var needsUpdate bool
 				var err error
 				BeforeEach(func() {
-					needsUpdate, err = sut.NeedsUpdate()
+					needsUpdate, err = sut.NeedsUpdate("v1.0.0")
 				})
 
 				It("should not have error", func() {
-					Expect(err).To(BeNil())
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should not require an update", func() {
+					Expect(needsUpdate).To(BeFalse())
+				})
+			})
+		})
+	})
+
+	Describe("with an new instance and no update config", func() {
+		var err error
+		fs := afero.NewMemMapFs()
+
+		BeforeEach(func() {
+			sut, err = updateconnector.New(config, fs)
+		})
+
+		It("should not have error", func() {
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Describe("sut.NeedsUpdate", func() {
+			Describe("when called", func() {
+				var needsUpdate bool
+				var err error
+
+				BeforeEach(func() {
+					needsUpdate, err = sut.NeedsUpdate("v1.0.0")
+				})
+
+				It("should not have error", func() {
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("should need update", func() {

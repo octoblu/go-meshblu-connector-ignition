@@ -1,21 +1,45 @@
 package updateconnector
 
-import "github.com/octoblu/go-meshblu-connector-ignition/runner"
+import (
+	"github.com/octoblu/go-meshblu-connector-ignition/runner"
+	"github.com/spf13/afero"
+)
 
 // UpdateConnector is an interface to handing updating the connector files
 type UpdateConnector interface {
-	NeedsUpdate() (bool, error)
+	NeedsUpdate(tag string) (bool, error)
 }
 
 type updater struct {
-	config *runner.Config
+	config       *runner.Config
+	updateConfig UpdateConfig
+	fs           afero.Fs
 }
 
 // New returns an instance of the UpdateConnector
-func New(config *runner.Config) (UpdateConnector, error) {
-	return &updater{config}, nil
+func New(config *runner.Config, fs afero.Fs) (UpdateConnector, error) {
+	if fs == nil {
+		fs = afero.NewOsFs()
+	}
+	updateConfig, err := NewUpdateConfig(fs)
+	if err == nil {
+		return nil, err
+	}
+	err = updateConfig.Load()
+	if err == nil {
+		return nil, err
+	}
+	return &updater{
+		config:       config,
+		fs:           fs,
+		updateConfig: updateConfig,
+	}, nil
 }
 
-func (u *updater) NeedsUpdate() (bool, error) {
+// NeedsUpdate returns if the connector needs to updated
+func (u *updater) NeedsUpdate(tag string) (bool, error) {
+	if u.updateConfig.GetTag() == tag {
+		return false, nil
+	}
 	return true, nil
 }
