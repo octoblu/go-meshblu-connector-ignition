@@ -75,6 +75,13 @@ func (prg *Program) Start(srv service.Service) error {
 }
 
 func (prg *Program) internalStart(fork bool) error {
+	needsUpdate, err := prg.uc.NeedsUpdate()
+	if err != nil {
+		return err
+	}
+	if needsUpdate {
+		prg.uc.Do()
+	}
 	commandPath := prg.getCommandPath()
 	nodeCommand, err := prg.TheExecutable("node")
 	if err != nil {

@@ -17,6 +17,11 @@ func NewUpdateConnector(prg *Program) *UpdateConnector {
 	return &UpdateConnector{prg}
 }
 
+// NeedsUpdate will check to see what version is installed and running
+func (uc *UpdateConnector) NeedsUpdate() (bool, error) {
+	return true, nil
+}
+
 // Do downloads and extracts the update
 func (uc *UpdateConnector) Do() error {
 	err := uc.prg.internalStop()
