@@ -4,25 +4,20 @@ go:
 branches:
   only:
   - /^v[0-9]/
-before_install:
-- echo "no before_install"
-install:
-- echo "no install"
+install: true
 script:
-- echo "no tests"
+- go test $(go list ./... | grep -v /vendor/)
 before_deploy:
-- "./cross-compile.sh"
+- ./build.sh cross-compile
+- mkdir -p deploy
+- cp dist/* deploy
 deploy:
 - provider: releases
   api_key:
     secure: "A+s2Funmvba/eDPbxAqI4cjDibZPo6cx6+mmizCgXtvOu8XzoUjTxjrJGfVASckeUC93OO9Z/wyvP6dakg5zPv0Cbof1VnXBC6r5FL+F4e2Af8Drn17qG8lysNQHpfvn1ef9ElXN+w6JZW3SEoaUskwfxUSf0eYAT8g3fUoiFVdI8f/PrmM8/zn/vhBEHOroyipSSFZ4TjbJ21TvOLrZyOAS03DwpHsJNJwb0UinoEqR3wE+UbcYfX4S/WkLGo2T1IH8FEYtOYla7UG2p4WZA0wyFjNBHBG4i6YSUIpmHw9CCsxXgZVGpei84oORiOWwV2uX9MMnNLj5Z0wnxua89i+rui8VEPxynvFWFhta+OR32H/QXPCscfWNLzK6JqYFIIwqVnooLeGC6hsFr+ghmapQ3V6EZmqbj4uqdRscNHHg6vIbqtX8xGpoHQZwBGA5EQ2RWxyk250hVLROjevkSV+NzrgOit567xAv8/Co3tbN4CzwIy9W5VAqoQrmDk/sGT6h+NjyzOkYO41G9HlYD7sb6e/50bBk+6uS5jTW4XB3efSFmm4h/IgFh9SoQ3dM6B5yK6MvGIuZ+sUeAnv0P0I2fj4W8vE05xiwoPPTCJtvVGbp7ndELHiFa9M6JJFD71ncKVDXFDXMxW+ylBxLeCZBNK+u72bD/DMpzWZGanM="
+  file_glob: true
   file:
-  - "tmp/meshblu-connector-ignition-darwin-386"
-  - "tmp/meshblu-connector-ignition-darwin-amd64"
-  - "tmp/meshblu-connector-ignition-linux-386"
-  - "tmp/meshblu-connector-ignition-linux-amd64"
-  - "tmp/meshblu-connector-ignition-windows-386"
-  - "tmp/meshblu-connector-ignition-windows-amd64"
+  - "deploy/*"
   skip_cleanup: true
   on:
     tags: true
