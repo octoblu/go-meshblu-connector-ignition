@@ -257,7 +257,7 @@ func (prg *Program) getFullConnectorName() string {
 }
 
 func (prg *Program) getEnv() []string {
-	debug := SetEnv("DEBUG", "meshblu-*")
+	debug := SetEnv("DEBUG", "meshblu-*,-meshblu-connector-runner*")
 	pathEnv := GetPathEnv(prg.config.BinPath)
 	return GetEnviron(debug, pathEnv)
 }
