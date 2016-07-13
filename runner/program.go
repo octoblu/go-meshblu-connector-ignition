@@ -240,7 +240,7 @@ func (prg *Program) update() error {
 }
 
 func (prg *Program) checkForChangesInterval() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Minute)
 
 	go func() {
 		for {
