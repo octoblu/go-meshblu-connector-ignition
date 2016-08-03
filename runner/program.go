@@ -93,6 +93,7 @@ func (prg *Program) internalStart(fork bool) error {
 	}
 	prg.cmd = exec.Command(nodeCommand, commandPath)
 	prg.initCmd(prg.cmd)
+	prg.initCmdForOS(prg.cmd)
 
 	if fork {
 		go prg.run()

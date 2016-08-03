@@ -11,8 +11,12 @@ build_on_docker() {
 build_on_local() {
   local goos="$1"
   local goarch="$2"
+  local ldflags="-w"
+  if [ "${goos}" == "windows" ]; then
+    ldflags="-H windowsgui"
+  fi
 
-  env GOOS="$goos" GOARCH="$goarch" go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o "${BUILD_DIR}/${APP_NAME}-${goos}-${goarch}" .
+  env GOOS="$goos" GOARCH="$goarch" go build -a -tags netgo -installsuffix cgo -ldflags "$ldflags" -o "${BUILD_DIR}/${APP_NAME}-${goos}-${goarch}" .
 }
 
 build_osx_on_local() {
