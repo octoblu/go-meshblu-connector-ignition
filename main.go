@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
@@ -29,6 +32,27 @@ func run(context *cli.Context) {
 	err = runnerClient.Start()
 	if err != nil {
 		log.Fatalln("Error executing connector", err.Error())
+	}
+
+	sigTerm := make(chan os.Signal)
+	signal.Notify(sigTerm, syscall.SIGTERM)
+
+	sigTermReceived := false
+
+	go func() {
+		<-sigTerm
+		fmt.Println("SIGTERM received, waiting to exit")
+		sigTermReceived = true
+	}()
+
+	for {
+		if sigTermReceived {
+			fmt.Println("SIGTERM received, shutting down.")
+			runnerClient.Shutdown()
+			os.Exit(0)
+		}
+
+		time.Sleep(1 * time.Second)
 	}
 }
 
