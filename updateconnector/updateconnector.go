@@ -2,6 +2,7 @@ package updateconnector
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/octoblu/go-meshblu-connector-assembler/extractor"
@@ -59,7 +60,8 @@ func (u *updater) Do(tag string) error {
 	if err != nil {
 		return err
 	}
-	return u.updateConfig.Write(tag)
+	pid := os.Getpid()
+	return u.updateConfig.Write(tag, pid)
 }
 
 func (u *updater) getDownloadURI(tag string) string {

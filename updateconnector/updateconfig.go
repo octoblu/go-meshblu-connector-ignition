@@ -11,12 +11,13 @@ import (
 // UpdateConfig defines the update configuration reader / writer
 type UpdateConfig interface {
 	Load() error
-	Write(tag string) error
+	Write(tag string, pid int) error
 	GetTag() string
 }
 
 type updateJSON struct {
 	Tag string
+	Pid int
 }
 
 type config struct {
@@ -67,8 +68,9 @@ func (c *config) Load() error {
 	return nil
 }
 
-func (c *config) Write(tag string) error {
+func (c *config) Write(tag string, pid int) error {
 	c.json.Tag = tag
+	c.json.Pid = pid
 	jsonBytes, err := json.Marshal(c.json)
 	if err != nil {
 		return err

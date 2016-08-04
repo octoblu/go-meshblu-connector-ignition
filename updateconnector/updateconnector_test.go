@@ -37,7 +37,7 @@ var _ = Describe("UpdateConnector", func() {
 		})
 
 		BeforeEach(func() {
-			err = updateConfig.Write("v1.0.0")
+			err = updateConfig.Write("v1.0.0", 0)
 			if err != nil {
 				return
 			}
@@ -77,7 +77,7 @@ var _ = Describe("UpdateConnector", func() {
 		})
 
 		BeforeEach(func() {
-			err = updateConfig.Write("v1.5.0")
+			err = updateConfig.Write("v1.5.0", 0)
 			if err != nil {
 				return
 			}
