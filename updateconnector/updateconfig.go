@@ -33,6 +33,7 @@ func NewUpdateConfig(fs afero.Fs) (UpdateConfig, error) {
 	}
 	json := &updateJSON{
 		Tag: "",
+		Pid: 0,
 	}
 	path, err := getConfigPath()
 	if err != nil {
