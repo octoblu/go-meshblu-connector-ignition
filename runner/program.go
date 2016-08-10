@@ -119,10 +119,13 @@ func (prg *Program) run() {
 		prg.running = false
 	}
 	prg.updateErrors()
-	prg.tryAgain()
+	err = prg.tryAgain()
+	if err != nil {
+		prg.logger.Warningf("Error running: %v", err)
+	}
 }
 
-func (prg *Program) tryAgain() {
+func (prg *Program) tryAgain() error {
 	timeSinceStarted := time.Since(prg.timeStarted)
 	if timeSinceStarted > time.Minute {
 		prg.logger.Infof("Program ran for 1 minute, resetting backoff")
@@ -131,7 +134,7 @@ func (prg *Program) tryAgain() {
 	duration := prg.b.Duration()
 	prg.logger.Infof("Restarting in %v seconds", duration)
 	time.Sleep(duration)
-	prg.internalStart(false)
+	return prg.internalStart(false)
 }
 
 // Stop service but really
