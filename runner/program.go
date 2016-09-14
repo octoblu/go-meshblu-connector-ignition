@@ -217,13 +217,12 @@ func (prg *Program) checkForChanges() error {
 
 func (prg *Program) update() error {
 	tag := prg.connector.VersionWithV()
-	pid := os.Getpid()
 	needsUpdate, err := prg.uc.NeedsUpdate(tag)
 	if err != nil {
 		return err
 	}
 	if !needsUpdate {
-		return prg.uc.Dont(tag, pid)
+		return prg.uc.Dont(tag)
 	}
 	if prg.running {
 		err := prg.internalStop()

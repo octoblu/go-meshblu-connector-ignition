@@ -13,6 +13,7 @@ import (
 type UpdateConnector interface {
 	NeedsUpdate(tag string) (bool, error)
 	Do(tag string) error
+	Dont(tag string) error
 }
 
 type updater struct {
@@ -54,7 +55,8 @@ func (u *updater) NeedsUpdate(tag string) (bool, error) {
 }
 
 // Dont updates the config file, but does not update the connector
-func (u *updater) Dont(tag string, pid int) error {
+func (u *updater) Dont(tag string) error {
+	pid := os.Getpid()
 	return u.updateConfig.Write(tag, pid)
 }
 
