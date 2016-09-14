@@ -109,6 +109,8 @@ func (prg *Program) run() {
 	prg.running = true
 	prg.cmd.Stderr = prg.stderr.Stream()
 	prg.cmd.Stdout = prg.stdout.Stream()
+	tag := prg.connector.VersionWithV()
+	prg.uc.Dont(tag)
 
 	prg.checkForChangesInterval()
 
@@ -196,9 +198,6 @@ func (prg *Program) checkForChanges() error {
 		if err != nil {
 			return err
 		}
-	} else {
-		tag := prg.connector.VersionWithV()
-		prg.uc.Dont(tag)
 	}
 	stopChange := prg.connector.DidStopChange()
 	if stopChange {
@@ -225,7 +224,7 @@ func (prg *Program) update() error {
 		return err
 	}
 	if !needsUpdate {
-		return prg.uc.Dont(tag)
+		return nil
 	}
 	if prg.running {
 		err := prg.internalStop()
