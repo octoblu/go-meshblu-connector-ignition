@@ -196,6 +196,9 @@ func (prg *Program) checkForChanges() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		tag := prg.connector.VersionWithV()
+		prg.uc.Dont(tag)
 	}
 	stopChange := prg.connector.DidStopChange()
 	if stopChange {
