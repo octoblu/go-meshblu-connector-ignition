@@ -53,6 +53,11 @@ func (u *updater) NeedsUpdate(tag string) (bool, error) {
 	return true, nil
 }
 
+// Dont updates the config file, but does not update the connector
+func (u *updater) Dont(tag string, pid int) error {
+	return u.updateConfig.Write(tag, pid)
+}
+
 // Do updates the connector
 func (u *updater) Do(tag string) error {
 	uri := u.getDownloadURI(tag)
