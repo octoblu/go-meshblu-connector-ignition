@@ -1,7 +1,9 @@
 # Meshblu Connector Ignition
 
-[![Build Status](https://travis-ci.org/octoblu/go-meshblu-connector-ignition.svg)](https://travis-ci.org/octoblu/go-meshblu-connector-ignition)
-[![Gitter](https://badges.gitter.im/octoblu/help.svg)](https://gitter.im/octoblu/help)
+[![Build Status](https://travis-ci.org/octoblu/go-meshblu-connector-ignition.svg?branch=master)](https://travis-ci.org/octoblu/go-meshblu-connector-ignition)
+[![GoDoc](https://godoc.org/github.com/octoblu/go-meshblu-connector-ignition?status.svg)](https://godoc.org/github.com/octoblu/go-meshblu-connector-ignition)
+[![Test Coverage](https://codecov.io/gh/octoblu/go-meshblu-connector-ignition/branch/master/graph/badge.svg)](https://codecov.io/gh/octoblu/go-meshblu-connector-ignition)
+[![Slack Status](http://community-slack.octoblu.com/badge.svg)](http://community-slack.octoblu.com)
 
 # Table of Contents
 
