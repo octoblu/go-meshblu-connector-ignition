@@ -5,15 +5,22 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	isterminal "github.com/azer/is-terminal"
+	mainlogger "github.com/azer/logger"
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
+	"github.com/kardianos/osext"
 	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 )
 
+var logMain = mainlogger.New("main")
+
 func main() {
+	initMainLogger()
 	app := cli.NewApp()
 	app.Name = "meshblu-connector-ignition"
 	app.Version = version()
@@ -25,13 +32,17 @@ func main() {
 func run(context *cli.Context) {
 	serviceConfig, err := runner.GetConfig()
 	if err != nil {
+		logMain.Error("Error getting service config", err.Error())
 		log.Fatalln("Error getting service config", err.Error())
+		return
 	}
 
 	runnerClient := runner.New(serviceConfig)
 	err = runnerClient.Start()
 	if err != nil {
+		logMain.Error("Error getting service config", err.Error())
 		log.Fatalln("Error executing connector", err.Error())
+		return
 	}
 
 	sigTerm := make(chan os.Signal)
@@ -41,13 +52,13 @@ func run(context *cli.Context) {
 
 	go func() {
 		<-sigTerm
-		fmt.Println("SIGTERM received, waiting to exit")
+		logMain.Info("SIGTERM received, waiting to exit")
 		sigTermReceived = true
 	}()
 
 	for {
 		if sigTermReceived {
-			fmt.Println("SIGTERM received, shutting down.")
+			logMain.Info("SIGTERM received, shutting down...")
 			runnerClient.Shutdown()
 			os.Exit(0)
 		}
@@ -63,4 +74,28 @@ func version() string {
 		log.Panicln(errorMessage, err.Error())
 	}
 	return version.String()
+}
+
+func getIgnitionLogFile() (*os.File, error) {
+	fullPath, err := osext.Executable()
+	if err != nil {
+		return nil, err
+	}
+	dir, _ := filepath.Split(fullPath)
+	logFilePath := filepath.Join(dir, "log", "ignition.log")
+	return os.OpenFile(logFilePath, os.O_APPEND|os.O_WRONLY, 0777)
+}
+
+func initMainLogger() {
+	mainlogger.AllEnabled = true
+	if isterminal.IsTerminal(syscall.Stderr) {
+		fmt.Println("interactive mode")
+		return
+	}
+	logFile, err := getIgnitionLogFile()
+	if err != nil {
+		log.Panicln("Error getting log file", err.Error())
+		return
+	}
+	mainlogger.SetOutput(logFile)
 }

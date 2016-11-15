@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONNECTOR_DIR="$HOME/.octoblu/MeshbluConnectors"
+CONNECTOR_DIR="$HOME/Library/MeshbluConnectors"
 
 build() {
   echo 'building...'

@@ -10,6 +10,22 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/azer/is-terminal",
+			"repository": "https://github.com/azer/is-terminal",
+			"vcs": "git",
+			"revision": "559561a4b3b889f31433e8d5eb30835f5e42f09e",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/azer/logger",
+			"repository": "https://github.com/azer/logger",
+			"vcs": "git",
+			"revision": "2e60c1d18af11cb0f391c1cadc951fea8ac47e08",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/codegangsta/cli",
 			"repository": "https://github.com/codegangsta/cli",
 			"vcs": "git",

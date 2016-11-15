@@ -1,8 +1,12 @@
 package updateconnector_test
 
 import (
+	"encoding/json"
+	"path/filepath"
+
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 
+	"github.com/kardianos/osext"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
@@ -37,7 +41,21 @@ var _ = Describe("UpdateConnector", func() {
 		})
 
 		BeforeEach(func() {
-			err = updateConfig.Write("v1.0.0", 0)
+			fullPath, _ := osext.Executable()
+			dir, _ := filepath.Split(fullPath)
+			filePath := filepath.Join(dir, "package.json")
+			type packageJSON struct {
+				Version string `json:"version"`
+			}
+			packageConfig := &packageJSON{
+				Version: "1.0.0",
+			}
+			jsonBytes, _ := json.Marshal(packageConfig)
+			afero.WriteFile(fs, filePath, jsonBytes, 0644)
+		})
+
+		BeforeEach(func() {
+			err = updateConfig.Write(0)
 			if err != nil {
 				return
 			}
@@ -77,7 +95,21 @@ var _ = Describe("UpdateConnector", func() {
 		})
 
 		BeforeEach(func() {
-			err = updateConfig.Write("v1.5.0", 0)
+			fullPath, _ := osext.Executable()
+			dir, _ := filepath.Split(fullPath)
+			filePath := filepath.Join(dir, "package.json")
+			type packageJSON struct {
+				Version string `json:"version"`
+			}
+			packageConfig := &packageJSON{
+				Version: "1.10.0",
+			}
+			jsonBytes, _ := json.Marshal(packageConfig)
+			afero.WriteFile(fs, filePath, jsonBytes, 0644)
+		})
+
+		BeforeEach(func() {
+			err = updateConfig.Write(0)
 			if err != nil {
 				return
 			}

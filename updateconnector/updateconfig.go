@@ -11,12 +11,10 @@ import (
 // UpdateConfig defines the update configuration reader / writer
 type UpdateConfig interface {
 	Load() error
-	Write(tag string, pid int) error
-	GetTag() string
+	Write(pid int) error
 }
 
 type updateJSON struct {
-	Tag string
 	Pid int
 }
 
@@ -32,10 +30,9 @@ func NewUpdateConfig(fs afero.Fs) (UpdateConfig, error) {
 		fs = afero.NewOsFs()
 	}
 	json := &updateJSON{
-		Tag: "",
 		Pid: 0,
 	}
-	path, err := getConfigPath()
+	path, err := getUpdateConfigPath()
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +66,7 @@ func (c *config) Load() error {
 	return nil
 }
 
-func (c *config) Write(tag string, pid int) error {
-	c.json.Tag = tag
+func (c *config) Write(pid int) error {
 	c.json.Pid = pid
 	jsonBytes, err := json.Marshal(c.json)
 	if err != nil {
@@ -79,11 +75,7 @@ func (c *config) Write(tag string, pid int) error {
 	return afero.WriteFile(c.fs, c.path, jsonBytes, 0644)
 }
 
-func (c *config) GetTag() string {
-	return c.json.Tag
-}
-
-func getConfigPath() (string, error) {
+func getUpdateConfigPath() (string, error) {
 	fullexecpath, err := osext.Executable()
 	if err != nil {
 		return "", err
