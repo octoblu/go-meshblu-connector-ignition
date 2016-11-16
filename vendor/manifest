@@ -2,6 +2,14 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/Sirupsen/logrus",
+			"repository": "https://github.com/Sirupsen/logrus",
+			"vcs": "git",
+			"revision": "abc6f20dabf4b10195f233ad21ea6c5ba33acae0",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/acsellers/inflections",
 			"repository": "https://github.com/acsellers/inflections",
 			"vcs": "git",
@@ -10,19 +18,12 @@
 			"notests": true
 		},
 		{
-			"importpath": "github.com/azer/is-terminal",
-			"repository": "https://github.com/azer/is-terminal",
+			"importpath": "github.com/cactus/go-statsd-client/statsd",
+			"repository": "https://github.com/cactus/go-statsd-client",
 			"vcs": "git",
-			"revision": "559561a4b3b889f31433e8d5eb30835f5e42f09e",
+			"revision": "d8eabe07bc70ff9ba6a56836cde99d1ea3d005f7",
 			"branch": "master",
-			"notests": true
-		},
-		{
-			"importpath": "github.com/azer/logger",
-			"repository": "https://github.com/azer/logger",
-			"vcs": "git",
-			"revision": "2e60c1d18af11cb0f391c1cadc951fea8ac47e08",
-			"branch": "master",
+			"path": "/statsd",
 			"notests": true
 		},
 		{
@@ -204,6 +205,22 @@
 			"repository": "https://github.com/tj/go-debug",
 			"vcs": "git",
 			"revision": "ff4a55a20a86994118644bbddc6a216da193cc13",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/uber-common/bark",
+			"repository": "https://github.com/uber-common/bark",
+			"vcs": "git",
+			"revision": "8841a0f8e7ca869284ccb29c08a14cf3f4310f46",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/uber-go/atomic",
+			"repository": "https://github.com/uber-go/atomic",
+			"vcs": "git",
+			"revision": "9e99152552a6ce13fa3b2ce4a9c4fb117cca4506",
 			"branch": "master",
 			"notests": true
 		},

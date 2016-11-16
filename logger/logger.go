@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 )
 
 // Streams defines the streams supported by the logger
@@ -26,6 +27,7 @@ type Logger interface {
 	Clear() error
 	Get() []byte
 	Close() error
+	Log(msg string)
 }
 
 // NewLogger creates an instance of a logger
@@ -71,6 +73,20 @@ func (client *Client) Get() []byte {
 	return client.streams.memory.Bytes()
 }
 
+// Log a message
+func (client *Client) Log(msg string) {
+	var key string
+	if client.isErrorStream {
+		key = "error"
+	} else {
+		key = "info"
+	}
+	timestamp := time.Now()
+	fullMessage := fmt.Sprintf("[%v][%v] %v", key, timestamp, msg)
+	fmt.Fprintln(client.streams.file, fullMessage)
+	fmt.Fprintln(client.streams.memory, fullMessage)
+}
+
 // Close the streams
 func (client *Client) Close() error {
 	err := client.Clear()
@@ -81,9 +97,18 @@ func (client *Client) Close() error {
 }
 
 func fileStream(filePath string) (*os.File, error) {
-	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0777)
+	return os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0777)
 }
 
 func memoryStream() *bytes.Buffer {
 	return &bytes.Buffer{}
 }
+
+// func getMainLogFilePath() (string, error) {
+// 	fullPath, err := osext.Executable()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	dir, _ := filepath.Split(fullPath)
+// 	return filepath.Join(dir, "log", "ignition.log")
+// }
