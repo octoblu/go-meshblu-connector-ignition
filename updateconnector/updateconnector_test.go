@@ -164,7 +164,7 @@ var _ = Describe("UpdateConnector", func() {
 					Expect(err).To(BeNil())
 				})
 
-				It("should requrie an update", func() {
+				It("should require an update", func() {
 					Expect(needsUpdate).To(BeTrue())
 				})
 			})
