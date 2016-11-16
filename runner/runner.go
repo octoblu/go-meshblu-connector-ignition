@@ -1,15 +1,17 @@
 package runner
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/kardianos/service"
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
+	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/meshblu"
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 )
+
+var mainLogger logger.MainLogger
 
 // Runner defines the interface to run a Cmd
 type Runner interface {
@@ -30,9 +32,12 @@ func New(config *Config) Runner {
 
 // Start runs the connector
 func (client *Client) Start() error {
+	if mainLogger == nil {
+		mainLogger = logger.GetMainLogger()
+	}
 	prg, err := NewProgram(client.config)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error creating new program %v", err.Error()))
+		mainLogger.Error("runner", "Error creating new program", err)
 		return err
 	}
 
@@ -44,7 +49,7 @@ func (client *Client) Start() error {
 
 	srv, err := service.New(prg, srvConfig)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error getting service %v", err.Error()))
+		mainLogger.Error("runner", "Error getting service", err)
 		return err
 	}
 
@@ -56,7 +61,7 @@ func (client *Client) Start() error {
 		for {
 			err = <-errs
 			if err != nil {
-				fmt.Println(fmt.Sprintf("[runner] Error captured in channel %v", err.Error()))
+				mainLogger.Error("runner", "Error captured in channel", err)
 			}
 		}
 	}()
@@ -64,31 +69,31 @@ func (client *Client) Start() error {
 	meshbluConfigPath := filepath.Join(client.config.Dir, "meshblu.json")
 	meshbluClient, uuid, err := meshblu.NewClient(meshbluConfigPath)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error getting meshblu client %v", err.Error()))
+		mainLogger.Error("runner", "Error getting meshblu client", err)
 		return err
 	}
 	connectorClient, err := connector.New(meshbluClient, uuid, client.config.Tag)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error connector client new %v", err.Error()))
+		mainLogger.Error("runner", "Error connector client new", err)
 		return err
 	}
 	err = connectorClient.Fetch()
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error connector client fetch %v", err.Error()))
+		mainLogger.Error("runner", "Error connector client fetch", err)
 		return err
 	}
 	prg.connector = connectorClient
 
 	status, err := status.New(meshbluClient, connectorClient.StatusUUID())
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error getting status device %v", err.Error()))
+		mainLogger.Error("runner", "Error getting status device", err)
 		return err
 	}
 	err = status.ResetErrors()
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error resetting errors on status device %v", err.Error()))
+		mainLogger.Error("runner", "Error resetting errors on status device", err)
 	}
-	fmt.Println(fmt.Sprintf("[runner] Resetting errors on status device"))
+	mainLogger.Info("runner", "Resetting errors on status device")
 	prg.status = status
 
 	githubSlug := prg.config.GithubSlug
@@ -96,7 +101,7 @@ func (client *Client) Start() error {
 	dir := prg.config.Dir
 	uc, err := updateconnector.New(githubSlug, connectorName, dir, nil)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error getting update connector %v", err.Error()))
+		mainLogger.Error("runner", "Error getting update connector", err)
 		return err
 	}
 	prg.uc = uc
@@ -104,7 +109,7 @@ func (client *Client) Start() error {
 
 	err = srv.Run()
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[runner] Error running %v", err.Error()))
+		mainLogger.Error("runner", "Error running", err)
 		return err
 	}
 	return nil

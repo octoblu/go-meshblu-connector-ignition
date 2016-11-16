@@ -9,6 +9,7 @@ import (
 
 	"github.com/jpillora/backoff"
 	"github.com/kardianos/service"
+	"github.com/mattn/go-isatty"
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
 	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
@@ -35,11 +36,14 @@ type Program struct {
 
 // NewProgram creates a new program cient
 func NewProgram(config *Config) (*Program, error) {
-	stdout, err := logger.NewLogger(config.Stdout, service.Interactive(), false)
+	if mainLogger == nil {
+		mainLogger = logger.GetMainLogger()
+	}
+	stdout, err := logger.NewLogger(config.Stdout, false)
 	if err != nil {
 		return nil, err
 	}
-	stderr, err := logger.NewLogger(config.Stderr, service.Interactive(), true)
+	stderr, err := logger.NewLogger(config.Stderr, true)
 	if err != nil {
 		return nil, err
 	}
@@ -58,18 +62,22 @@ func NewProgram(config *Config) (*Program, error) {
 
 // Start service but really
 func (prg *Program) Start(srv service.Service) error {
+	err := prg.uc.ClearPID()
+	if err != nil {
+		return err
+	}
 	if prg.connector.Stopped() {
 		for {
-			err := prg.connector.Fetch()
+			err = prg.connector.Fetch()
 			if err != nil {
-				prg.stderr.Log(fmt.Sprintf("Error fetching connector %v", err.Error()))
+				mainLogger.Error("program.Start", "Error fetching connector", err)
 				return err
 			}
-			prg.stdout.Log("Device stopped, waiting for connector to change")
+			mainLogger.Info("program.Start", "Device stopped, waiting for connector to change")
 			if prg.connector.Stopped() {
 				time.Sleep(30 * time.Second)
 			} else {
-				prg.stdout.Log("State Changed to Started")
+				mainLogger.Info("program.Start", "State Changed to Started")
 				break
 			}
 		}
@@ -106,7 +114,7 @@ func (prg *Program) internalStart(fork bool) error {
 }
 
 func (prg *Program) run() {
-	prg.stdout.Log(fmt.Sprintf("Starting %v", prg.config.DisplayName))
+	mainLogger.Info("program.run", fmt.Sprintf("Starting %v", prg.config.DisplayName))
 	prg.running = true
 	prg.cmd.Stderr = prg.stderr.Stream()
 	prg.cmd.Stdout = prg.stdout.Stream()
@@ -118,26 +126,26 @@ func (prg *Program) run() {
 	prg.timeStarted = time.Now()
 	err := prg.cmd.Run()
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("Error running: %v", err))
+		mainLogger.Error("program.run", "Error running", err)
 		prg.running = false
 	}
 	prg.updateErrors()
 	err = prg.tryAgain()
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("Error running: %v", err))
+		mainLogger.Error("program.run", "Error running again", err)
 	}
 }
 
 func (prg *Program) tryAgain() error {
 	timeSinceStarted := time.Since(prg.timeStarted)
 	if timeSinceStarted > time.Minute {
-		prg.stdout.Log(fmt.Sprintf("Program ran for %v minutes, resetting backoff", timeSinceStarted))
+		mainLogger.Info("program.tryAgain", fmt.Sprintf("Program ran for %v minutes, resetting backoff", timeSinceStarted))
 		prg.b.Reset()
-		prg.stdout.Log("Restarting now")
+		mainLogger.Info("program.tryAgain", "Restarting now")
 		return prg.internalStart(false)
 	}
 	duration := prg.b.Duration()
-	prg.stdout.Log(fmt.Sprintf("Restarting in %v seconds", duration))
+	mainLogger.Info("program.tryAgain", fmt.Sprintf("Restarting in %v seconds", duration))
 	time.Sleep(duration)
 	return prg.internalStart(false)
 }
@@ -145,38 +153,37 @@ func (prg *Program) tryAgain() error {
 // Stop service but really
 func (prg *Program) Stop(srv service.Service) error {
 	close(prg.exit)
-	prg.stdout.Log(fmt.Sprintf("Stopping %v", prg.config.DisplayName))
+	mainLogger.Info("program.Stop", fmt.Sprintf("Stopping %v", prg.config.DisplayName))
 	defer prg.stderr.Close()
 	defer prg.stdout.Close()
 	err := prg.internalStop()
 	if err != nil {
+		mainLogger.Error("program.Stop", "Error stopping", err)
 		return err
 	}
-
-	if service.Interactive() {
+	if isatty.IsTerminal(os.Stdout.Fd()) {
 		os.Exit(0)
 	}
-
 	return nil
 }
 
 func (prg *Program) updateErrors() error {
 	err := prg.status.UpdateErrors(prg.stderr.Get())
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("Error updating errors %v", err.Error()))
+		mainLogger.Error("program.updateErrors", "Error updating errors", err)
 	} else {
-		prg.stdout.Log("Updated status device with errors")
+		mainLogger.Info("program.updateErrors", "Updated status device with errors")
 	}
 	return nil
 }
 
 func (prg *Program) internalStop() error {
-	prg.stdout.Log(fmt.Sprintf("Internal Stopping %v", prg.config.DisplayName))
+	mainLogger.Info("program.internalStop", fmt.Sprintf("Internal Stopping %v", prg.config.DisplayName))
 	if prg.cmd != nil {
-		prg.stdout.Log("Killing process")
+		mainLogger.Info("program.internalStop", "Killing process")
 		prg.cmd.Process.Kill()
 	}
-	prg.stdout.Log("Internal Stopped")
+	mainLogger.Info("program.intervalStop", "Internal Stopped")
 	return nil
 }
 
@@ -191,15 +198,15 @@ func (prg *Program) getCommandPath() string {
 }
 
 func (prg *Program) checkForChanges() error {
-	prg.stdout.Log("Checking for changes")
+	mainLogger.Info("program.checkForChanges", "Checking for changes")
 	err := prg.connector.Fetch()
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("Device Update Error: %v", err.Error()))
+		mainLogger.Error("program.checkForChanges", "Device Update Error", err)
 		return err
 	}
 	versionChange := prg.connector.DidVersionChange()
 	if versionChange {
-		prg.stdout.Log(fmt.Sprintf("Device Version Change %v", prg.connector.Version()))
+		mainLogger.Info("program.checkForChanges", fmt.Sprintf("Device Version Change %v", prg.connector.Version()))
 		err := prg.update()
 		if err != nil {
 			return err
@@ -207,7 +214,7 @@ func (prg *Program) checkForChanges() error {
 	}
 	stopChange := prg.connector.DidStopChange()
 	if stopChange {
-		prg.stdout.Log("Device Stop Change")
+		mainLogger.Info("program.checkForChanges", "Device Stop Change")
 		if prg.connector.Stopped() {
 			err := prg.internalStop()
 			if err != nil {
@@ -227,29 +234,29 @@ func (prg *Program) update() error {
 	tag := prg.connector.VersionWithV()
 	needsUpdate, err := prg.uc.NeedsUpdate(tag)
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("needsUpdate -> Error %v", err.Error()))
+		mainLogger.Error("program.update", "Failed to run needsUpdate", err)
 		return err
 	}
 	if !needsUpdate {
-		prg.stderr.Log(fmt.Sprintf("no update needed (%s)", tag))
+		mainLogger.Info("program.update", fmt.Sprintf("no update needed (%s)", tag))
 		return nil
 	}
 	if prg.running {
 		err = prg.internalStop()
 		if err != nil {
-			prg.stderr.Log(fmt.Sprintf("internalStop -> Error %v", err.Error()))
+			mainLogger.Error("program.update", "Failed to run Stop", err)
 			return err
 		}
 	}
 	err = prg.uc.Do(tag)
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("update connector error (%s) %v", tag, err.Error()))
+		mainLogger.Error("program.update", "Failed to run Do", err)
 		return err
 	}
 	if !prg.running {
 		err = prg.internalStart(false)
 		if err != nil {
-			prg.stderr.Log(fmt.Sprintf("internalStop -> Error %v", err.Error()))
+			mainLogger.Error("program.update", "Failed to run Start", err)
 			return err
 		}
 	}
@@ -259,7 +266,7 @@ func (prg *Program) update() error {
 func (prg *Program) checkForChangesInterval() {
 	duration := time.Minute
 	if prg.ticker != nil {
-		prg.stdout.Log("changes interval already exists, canceling it now")
+		mainLogger.Info("program.checkForChangesInterval", "changes interval already exists, canceling it now")
 		prg.ticker.Stop()
 	}
 	prg.ticker = time.NewTicker(duration)
@@ -269,7 +276,7 @@ func (prg *Program) checkForChangesInterval() {
 			select {
 			case <-prg.ticker.C:
 				prg.checkForChanges()
-				prg.stdout.Log(fmt.Sprintf("Will check for meshblu device changes in %v", duration))
+				mainLogger.Info("program.checkForChangesInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
 			}
 		}
 	}()
@@ -289,9 +296,9 @@ func (prg *Program) TheExecutable(name string) (string, error) {
 	thePath := filepath.Join(prg.config.BinPath, name)
 	file, err := exec.LookPath(thePath)
 	if err != nil {
-		prg.stderr.Log(fmt.Sprintf("Failed to get Executable File, %s - Error %v", file, err))
+		mainLogger.Error("program.TheExecutable", "Error getting executable", err)
 		return "", err
 	}
-	prg.stdout.Log(fmt.Sprintf("got executable %s", file))
+	mainLogger.Info("program.TheExectuable", fmt.Sprintf("got executable %s", file))
 	return file, nil
 }

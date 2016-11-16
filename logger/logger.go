@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 )
 
 // Streams defines the streams supported by the logger
@@ -18,7 +17,6 @@ type Streams struct {
 type Client struct {
 	streams       *Streams
 	isErrorStream bool
-	interactive   bool
 }
 
 // Logger defines the interface for logging to mult-streams
@@ -27,16 +25,15 @@ type Logger interface {
 	Clear() error
 	Get() []byte
 	Close() error
-	Log(msg string)
 }
 
 // NewLogger creates an instance of a logger
-func NewLogger(filePath string, interactive bool, isErrorStream bool) (Logger, error) {
+func NewLogger(filePath string, isErrorStream bool) (Logger, error) {
 	if filePath == "" {
 		return nil, fmt.Errorf("Missing Log File Path %v", filePath)
 	}
 	streams := &Streams{}
-	file, err := fileStream(filePath)
+	file, err := getFileFromPath(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +42,6 @@ func NewLogger(filePath string, interactive bool, isErrorStream bool) (Logger, e
 	return &Client{
 		streams:       streams,
 		isErrorStream: isErrorStream,
-		interactive:   interactive,
 	}, nil
 }
 
@@ -53,7 +49,7 @@ func NewLogger(filePath string, interactive bool, isErrorStream bool) (Logger, e
 func (client *Client) Stream() io.Writer {
 	file := client.streams.file
 	memory := client.streams.memory
-	if client.interactive {
+	if IsTerminal() {
 		if client.isErrorStream {
 			return io.MultiWriter(file, memory, os.Stderr)
 		}
@@ -73,20 +69,6 @@ func (client *Client) Get() []byte {
 	return client.streams.memory.Bytes()
 }
 
-// Log a message
-func (client *Client) Log(msg string) {
-	var key string
-	if client.isErrorStream {
-		key = "error"
-	} else {
-		key = "info"
-	}
-	timestamp := time.Now()
-	fullMessage := fmt.Sprintf("[%v][%v] %v", key, timestamp, msg)
-	fmt.Fprintln(client.streams.file, fullMessage)
-	fmt.Fprintln(client.streams.memory, fullMessage)
-}
-
 // Close the streams
 func (client *Client) Close() error {
 	err := client.Clear()
@@ -96,19 +78,10 @@ func (client *Client) Close() error {
 	return client.streams.file.Close()
 }
 
-func fileStream(filePath string) (*os.File, error) {
-	return os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0777)
+func getFileFromPath(filePath string) (*os.File, error) {
+	return os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
 }
 
 func memoryStream() *bytes.Buffer {
 	return &bytes.Buffer{}
 }
-
-// func getMainLogFilePath() (string, error) {
-// 	fullPath, err := osext.Executable()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	dir, _ := filepath.Split(fullPath)
-// 	return filepath.Join(dir, "log", "ignition.log")
-// }

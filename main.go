@@ -10,8 +10,11 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
+	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 )
+
+var mainLogger logger.MainLogger
 
 func main() {
 	app := cli.NewApp()
@@ -23,20 +26,30 @@ func main() {
 }
 
 func run(context *cli.Context) {
+	err := logger.InitMainLogger()
+	if err != nil {
+		log.Panicln("Error initializing the main logger", err.Error())
+		os.Exit(1)
+		return
+	}
+	mainLogger := logger.GetMainLogger()
+
 	serviceConfig, err := runner.GetConfig()
 	if err != nil {
-		// logMain.Error("Error getting service config", err.Error())
-		log.Fatalln("Error getting service config", err.Error())
+		mainLogger.Error("main", "Error getting service config", err)
+		os.Exit(1)
 		return
 	}
 
 	runnerClient := runner.New(serviceConfig)
 	err = runnerClient.Start()
 	if err != nil {
-		// logMain.Error("Error getting service config", err.Error())
-		log.Fatalln("Error executing connector", err.Error())
+		mainLogger.Error("main", "Error getting service config", err)
+		os.Exit(1)
 		return
 	}
+
+	mainLogger.Info("main", "Starting...")
 
 	sigTerm := make(chan os.Signal)
 	signal.Notify(sigTerm, syscall.SIGTERM)
@@ -45,16 +58,16 @@ func run(context *cli.Context) {
 
 	go func() {
 		<-sigTerm
-		//logMain.Info("SIGTERM received, waiting to exit")
-		fmt.Println("SIGTERM received, waiting to exit")
+		mainLogger.Info("main", "SIGTERM received, waiting to exit")
 		sigTermReceived = true
 	}()
 
 	for {
 		if sigTermReceived {
-			//logMain.Info("SIGTERM received, shutting down...")
-			fmt.Println("SIGTERM received, shutting down...")
+			mainLogger.Info("main", "SIGTERM received, shutting down...")
 			runnerClient.Shutdown()
+			mainLogger.Clear()
+			mainLogger.Close()
 			os.Exit(0)
 		}
 
@@ -67,6 +80,8 @@ func version() string {
 	if err != nil {
 		errorMessage := fmt.Sprintf("Error with version number: %v", VERSION)
 		log.Panicln(errorMessage, err.Error())
+		os.Exit(1)
+		return ""
 	}
 	return version.String()
 }
