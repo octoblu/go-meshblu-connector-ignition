@@ -64,9 +64,11 @@ func NewProgram(config *Config) (*Program, error) {
 func (prg *Program) Start(srv service.Service) error {
 	err := prg.uc.ClearPID()
 	if err != nil {
+		mainLogger.Error("program.Start", "Error clearing PID", err)
 		return err
 	}
 	if prg.connector.Stopped() {
+		mainLogger.Info("program.Start", "connector is stopped, fetching")
 		for {
 			err = prg.connector.Fetch()
 			if err != nil {
@@ -82,7 +84,7 @@ func (prg *Program) Start(srv service.Service) error {
 			}
 		}
 	}
-
+	mainLogger.Info("program.Start", "running internal start")
 	return prg.internalStart(true)
 }
 
@@ -90,14 +92,21 @@ func (prg *Program) internalStart(fork bool) error {
 	tag := prg.connector.VersionWithV()
 	needsUpdate, err := prg.uc.NeedsUpdate(tag)
 	if err != nil {
+		mainLogger.Error("program.internalStart", "Needs Update Error", err)
 		return err
 	}
 	if needsUpdate {
-		prg.uc.Do(tag)
+		mainLogger.Info("program.internalStart", "Updating")
+		err = prg.uc.Do(tag)
+		if err != nil {
+			mainLogger.Error("program.internalStart", "update.Do Error", err)
+			return err
+		}
 	}
 	commandPath := prg.getCommandPath()
 	nodeCommand, err := prg.TheExecutable("node")
 	if err != nil {
+		mainLogger.Error("program.internalStart", "the executable error", err)
 		return err
 	}
 	prg.cmd = exec.Command(nodeCommand, commandPath)
@@ -207,10 +216,10 @@ func (prg *Program) checkForChanges() error {
 	versionChange := prg.connector.DidVersionChange()
 	if versionChange {
 		mainLogger.Info("program.checkForChanges", fmt.Sprintf("Device Version Change %v", prg.connector.Version()))
-		err := prg.update()
-		if err != nil {
-			return err
-		}
+	}
+	err = prg.update()
+	if err != nil {
+		return err
 	}
 	stopChange := prg.connector.DidStopChange()
 	if stopChange {

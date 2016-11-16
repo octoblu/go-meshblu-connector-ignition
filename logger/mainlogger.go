@@ -55,8 +55,8 @@ func InitMainLogger() error {
 // Info log a message
 func (client *MainClient) Info(key, msg string) {
 	timestamp := time.Now()
-	logMessage := fmt.Sprintf("[info][%s] ( %s ) %s", key, timestamp, msg)
-	prettyMessage := fmt.Sprintf("%s[info]%s[%s][%s%s%s] %s", cyan, reset, timestamp.Format("15:04:05.000"), magenta, key, reset, msg)
+	logMessage := fmt.Sprintf("( %s )[info][%s] %s", timestamp, key, msg)
+	prettyMessage := fmt.Sprintf("%s[info] %s[%s][%s%s%s] %s", cyan, reset, timestamp.Format("15:04:05.000"), magenta, key, reset, msg)
 	fmt.Fprintln(client.fileStream, logMessage)
 	if IsTerminal() {
 		fmt.Fprintln(client.stderr, prettyMessage)
@@ -66,7 +66,7 @@ func (client *MainClient) Info(key, msg string) {
 // Error log a message
 func (client *MainClient) Error(key, msg string, err error) {
 	timestamp := time.Now()
-	logMessage := fmt.Sprintf("[error][%s] ( %s ) %s %s", key, timestamp, msg, err.Error())
+	logMessage := fmt.Sprintf("( %s )[err][%s] %s %s", timestamp, key, msg, err.Error())
 	prettyMessage := fmt.Sprintf("%s[error]%s[%s][%s%s%s] %s %s", red, reset, timestamp.Format("15:04:05.000"), cyan, key, reset, msg, err.Error())
 	fmt.Fprintln(client.fileStream, logMessage)
 	if IsTerminal() {

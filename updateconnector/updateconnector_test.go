@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 
 	"github.com/kardianos/osext"
@@ -19,7 +20,7 @@ var _ = Describe("UpdateConnector", func() {
 		var err error
 		fs := afero.NewMemMapFs()
 		BeforeEach(func() {
-			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs, logger.NewFakeMainLogger())
 		})
 
 		It("should not return a error", func() {
@@ -59,7 +60,7 @@ var _ = Describe("UpdateConnector", func() {
 			if err != nil {
 				return
 			}
-			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs, logger.NewFakeMainLogger())
 		})
 
 		It("should not have error", func() {
@@ -113,7 +114,7 @@ var _ = Describe("UpdateConnector", func() {
 			if err != nil {
 				return
 			}
-			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs, logger.NewFakeMainLogger())
 		})
 
 		It("should not have error", func() {
@@ -144,7 +145,7 @@ var _ = Describe("UpdateConnector", func() {
 		fs := afero.NewMemMapFs()
 
 		BeforeEach(func() {
-			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs)
+			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs, logger.NewFakeMainLogger())
 		})
 
 		It("should not have error", func() {

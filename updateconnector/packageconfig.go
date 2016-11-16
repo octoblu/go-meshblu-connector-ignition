@@ -68,9 +68,11 @@ func (c *pkgConfig) Load() error {
 func (c *pkgConfig) Exists() (bool, error) {
 	exists, err := afero.Exists(c.fs, c.path)
 	if err != nil {
+		mainLogger.Error("package-config", "exists error", err)
 		return false, err
 	}
 	if !exists {
+		mainLogger.Info("package-config", "does not exist")
 		return false, nil
 	}
 	return true, nil

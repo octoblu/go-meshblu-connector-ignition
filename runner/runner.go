@@ -99,7 +99,7 @@ func (client *Client) Start() error {
 	githubSlug := prg.config.GithubSlug
 	connectorName := prg.config.ConnectorName
 	dir := prg.config.Dir
-	uc, err := updateconnector.New(githubSlug, connectorName, dir, nil)
+	uc, err := updateconnector.New(githubSlug, connectorName, dir, nil, nil)
 	if err != nil {
 		mainLogger.Error("runner", "Error getting update connector", err)
 		return err
