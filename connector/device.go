@@ -41,7 +41,7 @@ func New(meshbluClient meshblu.Meshblu, uuid, tag string) (Connector, error) {
 	return device, nil
 }
 
-// Fetch updates the device
+// Fetch updates the local device with latest from remote
 func (client *Client) Fetch() error {
 	data, err := client.meshbluClient.GetDevice(client.uuid)
 	if err != nil {

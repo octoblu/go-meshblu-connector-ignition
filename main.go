@@ -32,47 +32,38 @@ func run(context *cli.Context) {
 		os.Exit(1)
 		return
 	}
-	mainLogger := logger.GetMainLogger()
+	mainLogger = logger.GetMainLogger()
 
 	serviceConfig, err := runner.GetConfig()
-	if err != nil {
-		mainLogger.Error("main", "Error getting service config", err)
-		os.Exit(1)
-		return
-	}
+	fatalIfErr(err, "Error getting service config")
 
 	runnerClient := runner.New(serviceConfig)
 	err = runnerClient.Start()
-	if err != nil {
-		mainLogger.Error("main", "Error getting service config", err)
-		os.Exit(1)
-		return
-	}
+	fatalIfErr(err, "Error starting runner")
 
 	mainLogger.Info("main", "Starting...")
 
 	sigTerm := make(chan os.Signal)
 	signal.Notify(sigTerm, syscall.SIGTERM)
 
-	sigTermReceived := false
-
 	go func() {
 		<-sigTerm
 		mainLogger.Info("main", "SIGTERM received, waiting to exit")
-		sigTermReceived = true
+		runnerClient.Shutdown()
+		mainLogger.Clear()
+		mainLogger.Close()
+		os.Exit(0)
 	}()
+}
 
-	for {
-		if sigTermReceived {
-			mainLogger.Info("main", "SIGTERM received, shutting down...")
-			runnerClient.Shutdown()
-			mainLogger.Clear()
-			mainLogger.Close()
-			os.Exit(0)
-		}
-
-		time.Sleep(1 * time.Second)
+func fatalIfErr(err error, msg string) {
+	if err == nil {
+		return
 	}
+
+	mainLogger.Error("main", msg, err)
+	time.Sleep(time.Second * 1)
+	os.Exit(1)
 }
 
 func version() string {

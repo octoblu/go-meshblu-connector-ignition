@@ -67,23 +67,7 @@ func (prg *Program) Start(srv service.Service) error {
 		mainLogger.Error("program.Start", "Error clearing PID", err)
 		return err
 	}
-	if prg.connector.Stopped() {
-		mainLogger.Info("program.Start", "connector is stopped, fetching")
-		for {
-			err = prg.connector.Fetch()
-			if err != nil {
-				mainLogger.Error("program.Start", "Error fetching connector", err)
-				return err
-			}
-			mainLogger.Info("program.Start", "Device stopped, waiting for connector to change")
-			if prg.connector.Stopped() {
-				time.Sleep(30 * time.Second)
-			} else {
-				mainLogger.Info("program.Start", "State Changed to Started")
-				break
-			}
-		}
-	}
+
 	mainLogger.Info("program.Start", "running internal start")
 	return prg.internalStart(true)
 }
@@ -137,12 +121,16 @@ func (prg *Program) run() {
 	if err != nil {
 		mainLogger.Error("program.run", "Error running", err)
 		prg.running = false
+
+		prg.updateErrors()
+		err = prg.tryAgain()
+		if err != nil {
+			mainLogger.Error("program.run", "Error running again", err)
+		}
+		return
 	}
-	prg.updateErrors()
-	err = prg.tryAgain()
-	if err != nil {
-		mainLogger.Error("program.run", "Error running again", err)
-	}
+
+	prg.internalStart(false)
 }
 
 func (prg *Program) tryAgain() error {
@@ -217,26 +205,7 @@ func (prg *Program) checkForChanges() error {
 	if versionChange {
 		mainLogger.Info("program.checkForChanges", fmt.Sprintf("Device Version Change %v", prg.connector.Version()))
 	}
-	err = prg.update()
-	if err != nil {
-		return err
-	}
-	stopChange := prg.connector.DidStopChange()
-	if stopChange {
-		mainLogger.Info("program.checkForChanges", "Device Stop Change")
-		if prg.connector.Stopped() {
-			err := prg.internalStop()
-			if err != nil {
-				return err
-			}
-		} else {
-			err := prg.internalStart(false)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return prg.update()
 }
 
 func (prg *Program) update() error {
