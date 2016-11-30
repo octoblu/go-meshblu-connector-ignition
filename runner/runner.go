@@ -53,19 +53,6 @@ func (client *Client) Start() error {
 		return err
 	}
 
-	prg.srv = srv
-
-	errs := make(chan error, 5)
-
-	go func() {
-		for {
-			err = <-errs
-			if err != nil {
-				mainLogger.Error("runner", "Error captured in channel", err)
-			}
-		}
-	}()
-
 	meshbluConfigPath := filepath.Join(client.config.Dir, "meshblu.json")
 	meshbluClient, uuid, err := meshblu.NewClient(meshbluConfigPath)
 	if err != nil {
@@ -117,5 +104,5 @@ func (client *Client) Start() error {
 
 // Shutdown will kill the connector process
 func (client *Client) Shutdown() error {
-	return client.prg.Stop(client.prg.srv)
+	return client.prg.Stop(nil)
 }

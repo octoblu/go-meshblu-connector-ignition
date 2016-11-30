@@ -2,36 +2,35 @@ package runner
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
 	"github.com/jpillora/backoff"
 	"github.com/kardianos/service"
-	"github.com/mattn/go-isatty"
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
+	"github.com/octoblu/go-meshblu-connector-ignition/interval"
 	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
+	"github.com/octoblu/process"
+	"github.com/satori/go.uuid"
 )
 
 // Program inteface that is real
 type Program struct {
-	config       *Config
-	srv          service.Service
-	cmd          *exec.Cmd
-	connector    connector.Connector
-	status       status.Status
-	uc           updateconnector.UpdateConnector
-	retrySeconds int
-	b            *backoff.Backoff
-	timeStarted  time.Time
-	running      bool
-	stderr       logger.Logger
-	stdout       logger.Logger
-	exit         chan struct{}
-	ticker       *time.Ticker
+	config      *Config
+	cmd         *exec.Cmd
+	cmdGroup    *process.Group
+	connector   connector.Connector
+	currentRun  string
+	status      status.Status
+	uc          updateconnector.UpdateConnector
+	boff        *backoff.Backoff
+	timeStarted time.Time
+	errLog      logger.Logger
+	outLog      logger.Logger
+	interval    interval.Interval
 }
 
 // NewProgram creates a new program cient
@@ -39,133 +38,112 @@ func NewProgram(config *Config) (*Program, error) {
 	if mainLogger == nil {
 		mainLogger = logger.GetMainLogger()
 	}
-	stdout, err := logger.NewLogger(config.Stdout, false)
+
+	outLog, err := logger.NewLogger(config.Stdout, false)
 	if err != nil {
 		return nil, err
 	}
-	stderr, err := logger.NewLogger(config.Stderr, true)
+
+	errLog, err := logger.NewLogger(config.Stderr, true)
 	if err != nil {
 		return nil, err
 	}
+
 	return &Program{
 		config: config,
-		b: &backoff.Backoff{
+		boff: &backoff.Backoff{
 			Min: 5 * time.Second,
 			Max: 30 * time.Minute,
 		},
-		running: false,
-		stderr:  stderr,
-		stdout:  stdout,
-		exit:    make(chan struct{}),
+		errLog: errLog,
+		outLog: outLog,
 	}, nil
 }
 
 // Start service but really
-func (prg *Program) Start(srv service.Service) error {
-	err := prg.uc.ClearPID()
+func (prg *Program) Start(_ service.Service) error {
+	mainLogger.Info("program.Start", fmt.Sprintf("Starting %v", prg.config.DisplayName))
+	err := prg.uc.WritePID()
 	if err != nil {
-		mainLogger.Error("program.Start", "Error clearing PID", err)
+		mainLogger.Error("program.Start", "Error Writing PID", err)
 		return err
 	}
 
-	mainLogger.Info("program.Start", "running internal start")
-	return prg.internalStart(true)
-}
-
-func (prg *Program) internalStart(fork bool) error {
-	tag := prg.connector.VersionWithV()
-	needsUpdate, err := prg.uc.NeedsUpdate(tag)
-	if err != nil {
-		mainLogger.Error("program.internalStart", "Needs Update Error", err)
-		return err
-	}
-	if needsUpdate {
-		mainLogger.Info("program.internalStart", "Updating")
-		err = prg.uc.Do(tag)
-		if err != nil {
-			mainLogger.Error("program.internalStart", "update.Do Error", err)
-			return err
-		}
-	}
-	commandPath := prg.getCommandPath()
-	nodeCommand, err := prg.TheExecutable("node")
-	if err != nil {
-		mainLogger.Error("program.internalStart", "the executable error", err)
-		return err
-	}
-	prg.cmd = exec.Command(nodeCommand, commandPath)
-	prg.initCmd(prg.cmd)
-	prg.initCmdForOS(prg.cmd)
-
-	if fork {
-		go prg.run()
-	} else {
-		prg.run()
-	}
-
-	return nil
-}
-
-func (prg *Program) run() {
-	mainLogger.Info("program.run", fmt.Sprintf("Starting %v", prg.config.DisplayName))
-	prg.running = true
-	prg.cmd.Stderr = prg.stderr.Stream()
-	prg.cmd.Stdout = prg.stdout.Stream()
-
-	prg.uc.WritePID()
-
-	prg.checkForChangesInterval()
-
-	prg.timeStarted = time.Now()
-	err := prg.cmd.Run()
-	if err != nil {
-		mainLogger.Error("program.run", "Error running", err)
-		prg.running = false
-
-		prg.updateErrors()
-		err = prg.tryAgain()
-		if err != nil {
-			mainLogger.Error("program.run", "Error running again", err)
-		}
-		return
-	}
-
-	prg.internalStart(false)
-}
-
-func (prg *Program) tryAgain() error {
-	timeSinceStarted := time.Since(prg.timeStarted)
-	if timeSinceStarted > time.Minute {
-		mainLogger.Info("program.tryAgain", fmt.Sprintf("Program ran for %v minutes, resetting backoff", timeSinceStarted))
-		prg.b.Reset()
-		mainLogger.Info("program.tryAgain", "Restarting now")
-		return prg.internalStart(false)
-	}
-	duration := prg.b.Duration()
-	mainLogger.Info("program.tryAgain", fmt.Sprintf("Restarting in %v seconds", duration))
-	time.Sleep(duration)
-	return prg.internalStart(false)
+	return prg.restart()
 }
 
 // Stop service but really
-func (prg *Program) Stop(srv service.Service) error {
-	close(prg.exit)
+func (prg *Program) Stop(_ service.Service) error {
 	mainLogger.Info("program.Stop", fmt.Sprintf("Stopping %v", prg.config.DisplayName))
-	defer prg.stderr.Close()
-	defer prg.stdout.Close()
-	err := prg.internalStop()
+	defer prg.errLog.Close()
+	defer prg.outLog.Close()
+	return prg.stop()
+}
+
+func (prg *Program) restart() error {
+	backoffDuration := prg.boff.Duration()
+	mainLogger.Info("program.restart", fmt.Sprintf("Waiting for %v due to backoff", backoffDuration))
+	currentRun := uuid.NewV4().String()
+	prg.currentRun = currentRun
+
+	time.Sleep(backoffDuration)
+
+	err := prg.stop()
+	mainLogger.Info("program.restart", fmt.Sprintf("stop() %v", err))
 	if err != nil {
-		mainLogger.Error("program.Stop", "Error stopping", err)
+		mainLogger.Error("program.restart", "Failed to stop existing child", err)
 		return err
 	}
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		os.Exit(0)
+	mainLogger.Info("program.restart", "existing child stopped")
+
+	err = prg.update()
+	if err != nil {
+		mainLogger.Error("program.restart", "Failed to prg.update", err)
+		return err
 	}
+	mainLogger.Info("program.restart", "updated")
+
+	commandPath := prg.getCommandPath()
+	nodeCommand, err := prg.TheExecutable("node")
+	if err != nil {
+		mainLogger.Error("program.restart", "the executable error", err)
+		return err
+	}
+	prg.cmd = exec.Command(nodeCommand, commandPath)
+	prg.cmd.Dir = prg.config.Dir
+	prg.cmd.Env = prg.getEnv()
+	prg.cmd.SysProcAttr = sysProcAttrForOS()
+	prg.cmd.Stderr = prg.errLog.Stream()
+	prg.cmd.Stdout = prg.outLog.Stream()
+	prg.cmdGroup, err = process.Background(prg.cmd)
+
+	go func() {
+		if waitErr := prg.cmdGroup.Wait(); waitErr != nil {
+			mainLogger.Error("prg.cmd.Wait", "Command errored", waitErr)
+			prg.restart()
+		}
+	}()
+
+	go func() {
+		time.Sleep(time.Second * 30)
+		if currentRun == prg.currentRun {
+			mainLogger.Info("program.restart", "ran for 30s without dying, reseting backoff")
+			prg.boff.Reset()
+		}
+	}()
+
+	prg.checkForChangesOnInterval()
+
+	if err != nil {
+		return err
+	}
+
+	mainLogger.Info("program.restart", "restarted")
 	return nil
 }
 
 func (prg *Program) updateErrors() error {
-	err := prg.status.UpdateErrors(prg.stderr.Get())
+	err := prg.status.UpdateErrors(prg.errLog.Get())
 	if err != nil {
 		mainLogger.Error("program.updateErrors", "Error updating errors", err)
 	} else {
@@ -174,20 +152,15 @@ func (prg *Program) updateErrors() error {
 	return nil
 }
 
-func (prg *Program) internalStop() error {
-	mainLogger.Info("program.internalStop", fmt.Sprintf("Internal Stopping %v", prg.config.DisplayName))
-	if prg.cmd != nil {
-		mainLogger.Info("program.internalStop", "Killing process")
-		prg.cmd.Process.Kill()
+func (prg *Program) stop() error {
+	if prg.cmdGroup == nil {
+		return nil
 	}
-	mainLogger.Info("program.intervalStop", "Internal Stopped")
-	return nil
-}
-
-func (prg *Program) initCmd(cmd *exec.Cmd) {
-	cmd.Dir = prg.config.Dir
-	env := prg.getEnv()
-	cmd.Env = env
+	err := prg.cmdGroup.Terminate(time.Second * 30)
+	if _, isExitError := err.(*exec.ExitError); isExitError {
+		return nil
+	}
+	return err
 }
 
 func (prg *Program) getCommandPath() string {
@@ -204,60 +177,43 @@ func (prg *Program) checkForChanges() error {
 	versionChange := prg.connector.DidVersionChange()
 	if versionChange {
 		mainLogger.Info("program.checkForChanges", fmt.Sprintf("Device Version Change %v", prg.connector.Version()))
+		prg.boff.Reset()
+		prg.restart()
 	}
-	return prg.update()
+	return nil
 }
 
 func (prg *Program) update() error {
 	tag := prg.connector.VersionWithV()
 	needsUpdate, err := prg.uc.NeedsUpdate(tag)
 	if err != nil {
-		mainLogger.Error("program.update", "Failed to run needsUpdate", err)
+		mainLogger.Error("program.update", "Failed to run prg.uc.needsUpdate", err)
 		return err
 	}
 	if !needsUpdate {
 		mainLogger.Info("program.update", fmt.Sprintf("no update needed (%s)", tag))
 		return nil
 	}
-	if prg.running {
-		err = prg.internalStop()
-		if err != nil {
-			mainLogger.Error("program.update", "Failed to run Stop", err)
-			return err
-		}
-	}
 	err = prg.uc.Do(tag)
 	if err != nil {
-		mainLogger.Error("program.update", "Failed to run Do", err)
+		mainLogger.Error("program.update", "Failed to run uc.Do", err)
 		return err
-	}
-	if !prg.running {
-		err = prg.internalStart(false)
-		if err != nil {
-			mainLogger.Error("program.update", "Failed to run Start", err)
-			return err
-		}
 	}
 	return nil
 }
 
-func (prg *Program) checkForChangesInterval() {
-	duration := time.Minute
-	if prg.ticker != nil {
-		mainLogger.Info("program.checkForChangesInterval", "changes interval already exists, canceling it now")
-		prg.ticker.Stop()
-	}
-	prg.ticker = time.NewTicker(duration)
+func (prg *Program) checkForChangesOnInterval() {
+	mainLogger.Info("program.checkForChangesOnInterval", "")
 
-	go func() {
-		for {
-			select {
-			case <-prg.ticker.C:
-				prg.checkForChanges()
-				mainLogger.Info("program.checkForChangesInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
-			}
-		}
-	}()
+	if prg.interval != nil {
+		prg.interval.Clear()
+	}
+
+	duration := time.Minute
+	prg.interval = interval.SetInterval(duration, func() {
+		prg.checkForChanges()
+		mainLogger.Info("program.checkForChangesOnInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
+	})
 }
 
 func (prg *Program) getFullConnectorName() string {
