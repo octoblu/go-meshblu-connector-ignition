@@ -129,7 +129,7 @@
 		{
 			"importpath": "github.com/octoblu/process",
 			"repository": "https://github.com/octoblu/process",
-			"revision": "d15f7d4e4bf4527deaec314943c2e18d06d640c0",
+			"revision": "0a176885a1b7bd5a67a4d681bbe8a69117ba7d41",
 			"branch": "master",
 			"notests": true
 		},

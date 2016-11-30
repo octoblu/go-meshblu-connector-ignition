@@ -184,6 +184,12 @@ func (prg *Program) checkForChanges() error {
 }
 
 func (prg *Program) update() error {
+	err := prg.connector.Fetch()
+	if err != nil {
+		mainLogger.Error("program.update", "Failed to run prg.connector.Fetch", err)
+		return err
+	}
+
 	tag := prg.connector.VersionWithV()
 	needsUpdate, err := prg.uc.NeedsUpdate(tag)
 	if err != nil {
