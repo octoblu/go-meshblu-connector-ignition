@@ -81,7 +81,8 @@ func (prg *Program) Stop(_ service.Service) error {
 	mainLogger.Info("program.Stop", fmt.Sprintf("Stopping %v", prg.config.DisplayName))
 	defer prg.errLog.Close()
 	defer prg.outLog.Close()
-	return prg.stop()
+	close(prg.restartChan)
+	return nil
 }
 
 func (prg *Program) restart() {
@@ -155,7 +156,8 @@ func (prg *Program) restartLoop() error {
 
 		mainLogger.Info("program.restartLoop", "restarted")
 	}
-	return nil
+
+	return prg.stop()
 }
 
 func (prg *Program) updateErrors() error {
