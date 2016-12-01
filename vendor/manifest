@@ -4,7 +4,6 @@
 		{
 			"importpath": "github.com/Sirupsen/logrus",
 			"repository": "https://github.com/Sirupsen/logrus",
-			"vcs": "git",
 			"revision": "abc6f20dabf4b10195f233ad21ea6c5ba33acae0",
 			"branch": "master",
 			"notests": true
@@ -12,7 +11,6 @@
 		{
 			"importpath": "github.com/acsellers/inflections",
 			"repository": "https://github.com/acsellers/inflections",
-			"vcs": "git",
 			"revision": "cb98bfe9e3ee28e8649778f5fbb2e95f54f71b39",
 			"branch": "master",
 			"notests": true
@@ -20,7 +18,6 @@
 		{
 			"importpath": "github.com/cactus/go-statsd-client/statsd",
 			"repository": "https://github.com/cactus/go-statsd-client",
-			"vcs": "git",
 			"revision": "d8eabe07bc70ff9ba6a56836cde99d1ea3d005f7",
 			"branch": "master",
 			"path": "/statsd",
@@ -29,7 +26,6 @@
 		{
 			"importpath": "github.com/codegangsta/cli",
 			"repository": "https://github.com/codegangsta/cli",
-			"vcs": "git",
 			"revision": "595ba45e735c1e9c1f9ddc9e2ef21997fca893f2",
 			"branch": "master",
 			"notests": true
@@ -37,7 +33,6 @@
 		{
 			"importpath": "github.com/coreos/go-semver",
 			"repository": "https://github.com/coreos/go-semver",
-			"vcs": "git",
 			"revision": "294930c1e79c64e7dbe360054274fdad492c8cf5",
 			"branch": "master",
 			"notests": true
@@ -45,7 +40,6 @@
 		{
 			"importpath": "github.com/coreos/go-semver/semver",
 			"repository": "https://github.com/coreos/go-semver",
-			"vcs": "git",
 			"revision": "294930c1e79c64e7dbe360054274fdad492c8cf5",
 			"branch": "master",
 			"path": "/semver",
@@ -54,7 +48,6 @@
 		{
 			"importpath": "github.com/fatih/color",
 			"repository": "https://github.com/fatih/color",
-			"vcs": "git",
 			"revision": "533cd7fd8a85905f67a1753afb4deddc85ea174f",
 			"branch": "master",
 			"notests": true
@@ -62,7 +55,6 @@
 		{
 			"importpath": "github.com/jpillora/backoff",
 			"repository": "https://github.com/jpillora/backoff",
-			"vcs": "git",
 			"revision": "0496a6c14df020789376f4d4a261273d5ddb36ec",
 			"branch": "master",
 			"notests": true
@@ -70,7 +62,6 @@
 		{
 			"importpath": "github.com/kardianos/osext",
 			"repository": "https://github.com/kardianos/osext",
-			"vcs": "git",
 			"revision": "29ae4ffbc9a6fe9fb2bc5029050ce6996ea1d3bc",
 			"branch": "master",
 			"notests": true
@@ -78,7 +69,6 @@
 		{
 			"importpath": "github.com/kardianos/service",
 			"repository": "https://github.com/kardianos/service",
-			"vcs": "git",
 			"revision": "d97d87340b4a0d418f4d266ca7b00ba1d31e0d5a",
 			"branch": "master",
 			"notests": true
@@ -86,7 +76,6 @@
 		{
 			"importpath": "github.com/kr/fs",
 			"repository": "https://github.com/kr/fs",
-			"vcs": "git",
 			"revision": "2788f0dbd16903de03cb8186e5c7d97b69ad387b",
 			"branch": "master",
 			"notests": true
@@ -94,7 +83,6 @@
 		{
 			"importpath": "github.com/mattn/go-colorable",
 			"repository": "https://github.com/mattn/go-colorable",
-			"vcs": "git",
 			"revision": "e8a10ddc7d2a7fe255f6fd7f501070a4cb62c183",
 			"branch": "master",
 			"notests": true
@@ -102,7 +90,6 @@
 		{
 			"importpath": "github.com/mattn/go-isatty",
 			"repository": "https://github.com/mattn/go-isatty",
-			"vcs": "git",
 			"revision": "56b76bdf51f7708750eac80fa38b952bb9f32639",
 			"branch": "master",
 			"notests": true
@@ -110,7 +97,6 @@
 		{
 			"importpath": "github.com/octoblu/go-meshblu-connector-assembler/downloader",
 			"repository": "https://github.com/octoblu/go-meshblu-connector-assembler",
-			"vcs": "git",
 			"revision": "f37eb2b3e011f859a89a6d609ea38c3b0ae9936c",
 			"branch": "master",
 			"path": "/downloader",
@@ -119,7 +105,6 @@
 		{
 			"importpath": "github.com/octoblu/go-meshblu-connector-assembler/extractor",
 			"repository": "https://github.com/octoblu/go-meshblu-connector-assembler",
-			"vcs": "git",
 			"revision": "9b524f7d96c91183a942b9367e0fe023e83d3547",
 			"branch": "master",
 			"path": "/extractor",
@@ -128,7 +113,6 @@
 		{
 			"importpath": "github.com/octoblu/go-meshblu/config",
 			"repository": "https://github.com/octoblu/go-meshblu",
-			"vcs": "git",
 			"revision": "49da46f1f7c7ef571a08ccfe0f29988b2bc7f01a",
 			"branch": "master",
 			"path": "/config",
@@ -137,16 +121,21 @@
 		{
 			"importpath": "github.com/octoblu/go-meshblu/http/meshblu",
 			"repository": "https://github.com/octoblu/go-meshblu",
-			"vcs": "git",
 			"revision": "49da46f1f7c7ef571a08ccfe0f29988b2bc7f01a",
 			"branch": "master",
 			"path": "/http/meshblu",
 			"notests": true
 		},
 		{
+			"importpath": "github.com/octoblu/process",
+			"repository": "https://github.com/octoblu/process",
+			"revision": "72424f689ee6e2710e419a11c4851b9a99e65cc6",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/octoblu/unzipit",
 			"repository": "https://github.com/octoblu/unzipit",
-			"vcs": "git",
 			"revision": "da0d7368be9ace550e15ad554aaf69fc468ca4cb",
 			"branch": "master",
 			"notests": true
@@ -154,7 +143,6 @@
 		{
 			"importpath": "github.com/onsi/ginkgo",
 			"repository": "https://github.com/onsi/ginkgo",
-			"vcs": "git",
 			"revision": "01a0bc330e324e78c3e84f199c552481e3395179",
 			"branch": "master",
 			"notests": true
@@ -162,7 +150,6 @@
 		{
 			"importpath": "github.com/onsi/ginkgo/ginkgo",
 			"repository": "https://github.com/onsi/ginkgo",
-			"vcs": "git",
 			"revision": "5437a97bf824dec14e58d68c56ee36e772670c2e",
 			"branch": "master",
 			"path": "/ginkgo",
@@ -171,7 +158,6 @@
 		{
 			"importpath": "github.com/onsi/gomega",
 			"repository": "https://github.com/onsi/gomega",
-			"vcs": "git",
 			"revision": "c73e51675ad2455a4515b6213eb7145eaade4824",
 			"branch": "master",
 			"notests": true
@@ -179,7 +165,6 @@
 		{
 			"importpath": "github.com/pkg/errors",
 			"repository": "https://github.com/pkg/errors",
-			"vcs": "git",
 			"revision": "a2d6902c6d2a2f194eb3fb474981ab7867c81505",
 			"branch": "master",
 			"notests": true
@@ -187,15 +172,20 @@
 		{
 			"importpath": "github.com/pkg/sftp",
 			"repository": "https://github.com/pkg/sftp",
-			"vcs": "git",
 			"revision": "57fcf4a640a942eb05181f929601f8f4409eda3e",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/satori/go.uuid",
+			"repository": "https://github.com/satori/go.uuid",
+			"revision": "b061729afc07e77a8aa4fad0a2fd840958f1942a",
 			"branch": "master",
 			"notests": true
 		},
 		{
 			"importpath": "github.com/spf13/afero",
 			"repository": "https://github.com/spf13/afero",
-			"vcs": "git",
 			"revision": "9d16de23201225827d576b4eee772103f71a75d7",
 			"branch": "master",
 			"notests": true
@@ -203,7 +193,6 @@
 		{
 			"importpath": "github.com/tj/go-debug",
 			"repository": "https://github.com/tj/go-debug",
-			"vcs": "git",
 			"revision": "ff4a55a20a86994118644bbddc6a216da193cc13",
 			"branch": "master",
 			"notests": true
@@ -211,7 +200,6 @@
 		{
 			"importpath": "github.com/uber-common/bark",
 			"repository": "https://github.com/uber-common/bark",
-			"vcs": "git",
 			"revision": "8841a0f8e7ca869284ccb29c08a14cf3f4310f46",
 			"branch": "master",
 			"notests": true
@@ -219,7 +207,6 @@
 		{
 			"importpath": "github.com/uber-go/atomic",
 			"repository": "https://github.com/uber-go/atomic",
-			"vcs": "git",
 			"revision": "9e99152552a6ce13fa3b2ce4a9c4fb117cca4506",
 			"branch": "master",
 			"notests": true
@@ -227,7 +214,6 @@
 		{
 			"importpath": "github.com/visionmedia/go-debug",
 			"repository": "https://github.com/visionmedia/go-debug",
-			"vcs": "git",
 			"revision": "ff4a55a20a86994118644bbddc6a216da193cc13",
 			"branch": "master",
 			"notests": true
@@ -235,7 +221,6 @@
 		{
 			"importpath": "golang.org/x/crypto/curve25519",
 			"repository": "https://go.googlesource.com/crypto",
-			"vcs": "git",
 			"revision": "2c99acdd1e9b90d779ca23f632aad86af9909c62",
 			"branch": "master",
 			"path": "/curve25519",
@@ -244,7 +229,6 @@
 		{
 			"importpath": "golang.org/x/crypto/ed25519",
 			"repository": "https://go.googlesource.com/crypto",
-			"vcs": "git",
 			"revision": "2c99acdd1e9b90d779ca23f632aad86af9909c62",
 			"branch": "master",
 			"path": "/ed25519",
@@ -253,7 +237,6 @@
 		{
 			"importpath": "golang.org/x/crypto/ssh",
 			"repository": "https://go.googlesource.com/crypto",
-			"vcs": "git",
 			"revision": "2c99acdd1e9b90d779ca23f632aad86af9909c62",
 			"branch": "master",
 			"path": "/ssh",
@@ -262,7 +245,6 @@
 		{
 			"importpath": "golang.org/x/sys/windows",
 			"repository": "https://go.googlesource.com/sys",
-			"vcs": "git",
 			"revision": "d4feaf1a7e61e1d9e79e6c4e76c6349e9cab0a03",
 			"branch": "master",
 			"path": "/windows",
@@ -271,7 +253,6 @@
 		{
 			"importpath": "golang.org/x/sys/windows/registry",
 			"repository": "https://go.googlesource.com/sys",
-			"vcs": "git",
 			"revision": "d4feaf1a7e61e1d9e79e6c4e76c6349e9cab0a03",
 			"branch": "master",
 			"path": "/windows/registry",
@@ -280,7 +261,6 @@
 		{
 			"importpath": "golang.org/x/text/transform",
 			"repository": "https://go.googlesource.com/text",
-			"vcs": "git",
 			"revision": "d5d7737684e596dbabf914ecf946d2783f35bdc2",
 			"branch": "master",
 			"path": "/transform",
@@ -289,7 +269,6 @@
 		{
 			"importpath": "golang.org/x/text/unicode/norm",
 			"repository": "https://go.googlesource.com/text",
-			"vcs": "git",
 			"revision": "d5d7737684e596dbabf914ecf946d2783f35bdc2",
 			"branch": "master",
 			"path": "/unicode/norm",
@@ -298,7 +277,6 @@
 		{
 			"importpath": "gopkg.in/yaml.v2",
 			"repository": "https://gopkg.in/yaml.v2",
-			"vcs": "git",
 			"revision": "a83829b6f1293c91addabc89d0571c246397bbf4",
 			"branch": "v2",
 			"notests": true

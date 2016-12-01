@@ -14,9 +14,16 @@ var mainLogger logger.MainLogger
 
 // UpdateConnector is an interface to handing updating the connector files
 type UpdateConnector interface {
+	// NeedsUpdate returns true if the connector needs to updated
 	NeedsUpdate(tag string) (bool, error)
+
+	// Do updates the connector
 	Do(tag string) error
+
+	// WritePID updates the PID
 	WritePID() error
+
+	// ClearPID clears the PID
 	ClearPID() error
 }
 
