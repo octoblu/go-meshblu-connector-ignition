@@ -39,12 +39,6 @@ func Background(cmd *exec.Cmd) (*Group, error) {
 	onExitForTerminate := make(chan error, 1)
 	onExitForWait := make(chan error, 1)
 
-	sysProcAttr, err := ensureSysProcAttr(cmd.SysProcAttr)
-	if err != nil {
-		return nil, err
-	}
-	cmd.SysProcAttr = sysProcAttr
-
 	// Try to start process
 	go startProcess(cmd, startc, onExitMux)
 	// Start muxing the onExit
@@ -72,52 +66,42 @@ func (g *Group) Signal(sig os.Signal) error {
 	if g == nil || g.onExitForTerminate == nil {
 		return syscall.ESRCH
 	}
-	if leader, err := g.isLeader(); err != nil {
-		return err
-	} else if !leader {
-		return ErrNotLeader
-	}
 
 	// This just creates a process object from a Pid in Unix
 	// instead of actually searching it.
-	grp, _ := os.FindProcess(-g.pid)
+	grp, _ := os.FindProcess(g.pid)
+	if grp == nil {
+		return fmt.Errorf("could not find process for", g.pid)
+	}
 	return grp.Signal(sig)
 }
 
 // Terminate first tries to gracefully terminate the process, waits patience time, then does final termination and waits for it to exit.
 func (g *Group) Terminate(patience time.Duration) error {
-	var terminated bool
+	// did we Terminate previously?
+	if g.onExitForTerminate == nil {
+		return nil
+	}
 
-	// did we exit in the meantime?
+	// did we exit outside of a Terminate call?
 	select {
-	case errWait, opened := <-g.onExitForTerminate:
-		if opened {
-			<-g.onExitForTerminate
-			g.onExitForTerminate = nil
-			return errWait
-		}
+	case <-g.onExitForTerminate:
+		g.onExitForTerminate = nil
+		return nil
 	default:
 	}
 
 	// try to be soft
-	if err := g.Signal(syscall.SIGTERM); err != nil {
+	if err := g.Signal(softSignal()); err != nil {
 		return err
 	}
 
 	// wait at most patience time for exit
 	select {
-	case _, opened := <-g.onExitForTerminate:
-		if opened {
-			<-g.onExitForTerminate
-			g.onExitForTerminate = nil
-			terminated = true
-		}
-	case <-time.After(patience):
-	}
-
-	// exited gracefully
-	if terminated {
+	case <-g.onExitForTerminate:
+		g.onExitForTerminate = nil
 		return nil
+	case <-time.After(patience):
 	}
 
 	// do it the hard way
@@ -126,7 +110,6 @@ func (g *Group) Terminate(patience time.Duration) error {
 	}
 
 	// But we need to wait on the result now
-	<-g.onExitForTerminate
 	<-g.onExitForTerminate
 	g.onExitForTerminate = nil
 	return nil
@@ -138,30 +121,8 @@ func (g *Group) Wait() error {
 	return <-g.onExitForWait
 }
 
-// isLeader determines, whether g is still the leader of the process group
-func (g *Group) isLeader() (ok bool, err error) {
-	if g == nil {
-		return false, syscall.ESRCH
-	}
-	pgid, err := syscall.Getpgid(g.pid)
-	if err != nil {
-		return false, err
-	}
-
-	// Pids 0 and 1 will have special meaning, so don't return them.
-	if pgid < 2 {
-		return false, nil
-	}
-
-	// the process is not the leader?
-	if pgid != g.pid {
-		return false, nil
-	}
-	return true, nil
-}
-
 func muxOnExit(onExit chan error, otherOnExits ...chan error) {
-	for err, open := <-onExit; open; {
+	for err := range onExit {
 		for _, otherOnExit := range otherOnExits {
 			select {
 			case otherOnExit <- err:

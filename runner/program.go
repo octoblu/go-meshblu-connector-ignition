@@ -14,7 +14,7 @@ import (
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
 	"github.com/octoblu/process"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 // Program inteface that is real
@@ -31,6 +31,7 @@ type Program struct {
 	errLog      logger.Logger
 	outLog      logger.Logger
 	interval    interval.Interval
+	restartChan chan bool
 }
 
 // NewProgram creates a new program cient
@@ -55,8 +56,9 @@ func NewProgram(config *Config) (*Program, error) {
 			Min: 5 * time.Second,
 			Max: 30 * time.Minute,
 		},
-		errLog: errLog,
-		outLog: outLog,
+		errLog:      errLog,
+		outLog:      outLog,
+		restartChan: make(chan bool, 1),
 	}, nil
 }
 
@@ -69,7 +71,9 @@ func (prg *Program) Start(_ service.Service) error {
 		return err
 	}
 
-	return prg.restart()
+	go prg.restartLoop()
+	prg.restartChan <- true
+	return nil
 }
 
 // Stop service but really
@@ -80,65 +84,77 @@ func (prg *Program) Stop(_ service.Service) error {
 	return prg.stop()
 }
 
-func (prg *Program) restart() error {
-	backoffDuration := prg.boff.Duration()
-	mainLogger.Info("program.restart", fmt.Sprintf("Waiting for %v due to backoff", backoffDuration))
-	currentRun := uuid.NewV4().String()
-	prg.currentRun = currentRun
+func (prg *Program) restart() {
+	mainLogger.Info("program.restart", "restart called")
+	prg.restartChan <- true
+}
 
-	time.Sleep(backoffDuration)
+func (prg *Program) restartLoop() error {
+	for range prg.restartChan {
+		mainLogger.Info("program.restartLoop", "restart signal received")
+		backoffDuration := prg.boff.Duration()
+		mainLogger.Info("program.restartLoop", fmt.Sprintf("Waiting for %v due to backoff", backoffDuration))
+		currentRun := uuid.NewV4().String()
+		prg.currentRun = currentRun
 
-	err := prg.stop()
-	mainLogger.Info("program.restart", fmt.Sprintf("stop() %v", err))
-	if err != nil {
-		mainLogger.Error("program.restart", "Failed to stop existing child", err)
-		return err
-	}
-	mainLogger.Info("program.restart", "existing child stopped")
+		time.Sleep(backoffDuration)
 
-	err = prg.update()
-	if err != nil {
-		mainLogger.Error("program.restart", "Failed to prg.update", err)
-		return err
-	}
-	mainLogger.Info("program.restart", "updated")
-
-	commandPath := prg.getCommandPath()
-	nodeCommand, err := prg.TheExecutable("node")
-	if err != nil {
-		mainLogger.Error("program.restart", "the executable error", err)
-		return err
-	}
-	prg.cmd = exec.Command(nodeCommand, commandPath)
-	prg.cmd.Dir = prg.config.Dir
-	prg.cmd.Env = prg.getEnv()
-	prg.cmd.SysProcAttr = sysProcAttrForOS()
-	prg.cmd.Stderr = prg.errLog.Stream()
-	prg.cmd.Stdout = prg.outLog.Stream()
-	prg.cmdGroup, err = process.Background(prg.cmd)
-
-	go func() {
-		if waitErr := prg.cmdGroup.Wait(); waitErr != nil {
-			mainLogger.Error("prg.cmd.Wait", "Command errored", waitErr)
-			prg.restart()
+		err := prg.stop()
+		mainLogger.Info("program.restartLoop", fmt.Sprintf("stop() %v", err))
+		if err != nil {
+			mainLogger.Error("program.restartLoop", "Failed to stop existing child", err)
+			return err
 		}
-	}()
+		mainLogger.Info("program.restartLoop", "existing child stopped")
 
-	go func() {
-		time.Sleep(time.Second * 30)
-		if currentRun == prg.currentRun {
-			mainLogger.Info("program.restart", "ran for 30s without dying, reseting backoff")
-			prg.boff.Reset()
+		err = prg.update()
+		if err != nil {
+			mainLogger.Error("program.restartLoop", "Failed to prg.update", err)
+			return err
 		}
-	}()
+		mainLogger.Info("program.restartLoop", "updated")
 
-	prg.checkForChangesOnInterval()
+		commandPath := prg.getCommandPath()
+		nodeCommand, err := prg.TheExecutable("node")
+		if err != nil {
+			mainLogger.Error("program.restartLoop", "the executable error", err)
+			return err
+		}
+		prg.cmd = exec.Command(nodeCommand, commandPath)
+		prg.cmd.Dir = prg.config.Dir
+		prg.cmd.Env = prg.getEnv()
+		prg.cmd.SysProcAttr = sysProcAttrForOS()
+		prg.cmd.Stderr = prg.errLog.Stream()
+		prg.cmd.Stdout = prg.outLog.Stream()
+		prg.cmdGroup, err = process.Background(prg.cmd)
 
-	if err != nil {
-		return err
+		go func() {
+			if waitErr := prg.cmdGroup.Wait(); waitErr != nil {
+				mainLogger.Error("prg.cmd.Wait", "Command errored", waitErr)
+				if currentRun != prg.currentRun {
+					mainLogger.Info("prg.cmd.Wait", "Not the currentRun, ignoring")
+					return
+				}
+				prg.restart()
+			}
+		}()
+
+		go func() {
+			time.Sleep(time.Second * 30)
+			if currentRun == prg.currentRun {
+				mainLogger.Info("program.restartLoop", "ran for 30s without dying, reseting backoff")
+				prg.boff.Reset()
+			}
+		}()
+
+		prg.checkForChangesOnInterval()
+
+		if err != nil {
+			return err
+		}
+
+		mainLogger.Info("program.restartLoop", "restarted")
 	}
-
-	mainLogger.Info("program.restart", "restarted")
 	return nil
 }
 
@@ -153,6 +169,7 @@ func (prg *Program) updateErrors() error {
 }
 
 func (prg *Program) stop() error {
+	mainLogger.Info("program.stop", "stop()")
 	if prg.cmdGroup == nil {
 		return nil
 	}
@@ -215,7 +232,7 @@ func (prg *Program) checkForChangesOnInterval() {
 		prg.interval.Clear()
 	}
 
-	duration := time.Minute
+	duration := time.Second
 	prg.interval = interval.SetInterval(duration, func() {
 		prg.checkForChanges()
 		mainLogger.Info("program.checkForChangesOnInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
