@@ -2,13 +2,14 @@ package runner
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/kardianos/service"
 	"github.com/octoblu/go-meshblu-connector-ignition/connector"
 	"github.com/octoblu/go-meshblu-connector-ignition/logger"
-	"github.com/octoblu/go-meshblu-connector-ignition/meshblu"
 	"github.com/octoblu/go-meshblu-connector-ignition/status"
 	"github.com/octoblu/go-meshblu-connector-ignition/updateconnector"
+	"github.com/octoblu/go-meshblu/http/meshblu"
 )
 
 var mainLogger logger.MainLogger
@@ -64,11 +65,22 @@ func (client *Client) Start() error {
 		mainLogger.Error("runner", "Error connector client new", err)
 		return err
 	}
-	err = connectorClient.Fetch()
-	if err != nil {
-		mainLogger.Error("runner", "Error connector client fetch", err)
-		return err
+
+	for {
+		meshbluErr := connectorClient.Fetch()
+		if meshbluErr == nil {
+			break
+		}
+		mainLogger.Error("runner", "Error connector client fetch", meshbluErr)
+		if meshblu.IsRecoverable(meshbluErr) {
+			mainLogger.Info("runner", "Error was recoverable, trying again in 10s")
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		return meshbluErr
 	}
+
 	prg.connector = connectorClient
 
 	status, err := status.New(meshbluClient, connectorClient.StatusUUID())

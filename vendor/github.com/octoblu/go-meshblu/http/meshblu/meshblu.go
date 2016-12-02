@@ -65,7 +65,12 @@ func (client *Client) request(method, path string, body io.Reader) ([]byte, erro
 
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, NewRecoverableError(err)
+	}
+
+	if response.StatusCode > 499 {
+		err = fmt.Errorf("Meshblu may have degraded performance, returned invalid response code: %v", response.StatusCode)
+		return nil, NewRecoverableError(err)
 	}
 
 	if response.StatusCode > 299 {
