@@ -237,7 +237,7 @@ func (prg *Program) checkForChangesOnInterval() {
 	duration := time.Minute
 	prg.interval = interval.SetInterval(duration, func() {
 		prg.checkForChanges()
-		mainLogger.Info("program.checkForChangesOnInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
+		// mainLogger.Info("program.checkForChangesOnInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
 	})
 }
 

@@ -1,4 +1,4 @@
 package main
 
 // VERSION is the current application Version
-var VERSION = "8.2.0"
+var VERSION = "8.2.1"
