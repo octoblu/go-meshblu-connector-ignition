@@ -1,5 +1,5 @@
-FROM scratch
+FROM centurylink/ca-certs 
 MAINTAINER Octoblu, Inc. <docker@octoblu.com>
 
-ADD meshblu-connector-ignition meshblu-connector-ignition
-ENTRYPOINT ["./meshblu-connector-ignition"]
+ADD entrypoint entrypoint
+ENTRYPOINT ["./entrypoint"]
