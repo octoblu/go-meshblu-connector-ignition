@@ -53,8 +53,8 @@ func NewProgram(config *Config) (*Program, error) {
 	return &Program{
 		config: config,
 		boff: &backoff.Backoff{
-			Min: 5 * time.Second,
-			Max: 30 * time.Minute,
+			Min: time.Second,
+			Max: time.Minute,
 		},
 		errLog:      errLog,
 		outLog:      outLog,
@@ -111,9 +111,9 @@ func (prg *Program) restartLoop() error {
 		err = prg.update()
 		if err != nil {
 			mainLogger.Error("program.restartLoop", "Failed to prg.update", err)
-			return err
+		} else {
+			mainLogger.Info("program.restartLoop", "updated")
 		}
-		mainLogger.Info("program.restartLoop", "updated")
 
 		commandPath := prg.getCommandPath()
 		nodeCommand, err := prg.TheExecutable("node")
