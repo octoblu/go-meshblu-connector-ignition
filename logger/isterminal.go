@@ -3,7 +3,7 @@ package logger
 import (
 	"os"
 
-	"github.com/mattn/go-isatty"
+	isatty "github.com/mattn/go-isatty"
 )
 
 // IsTerminal returns a bool if it is stderr

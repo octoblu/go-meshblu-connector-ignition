@@ -1,22 +1,20 @@
 package logger
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
-)
 
-// Streams defines the streams supported by the logger
-type Streams struct {
-	memory *bytes.Buffer
-	file   *os.File
-}
+	"github.com/djherbis/buffer"
+)
 
 // Client defines the logger struct
 type Client struct {
-	streams       *Streams
-	isErrorStream bool
+	memoryStream buffer.Buffer
+	multi        io.Writer
+	fileStream   buffer.Buffer
+	file         *os.File
 }
 
 // Logger defines the interface for logging to mult-streams
@@ -32,41 +30,46 @@ func NewLogger(filePath string, isErrorStream bool) (Logger, error) {
 	if filePath == "" {
 		return nil, fmt.Errorf("Missing Log File Path %v", filePath)
 	}
-	streams := &Streams{}
 	file, err := getFileFromPath(filePath)
 	if err != nil {
 		return nil, err
 	}
-	streams.file = file
-	streams.memory = memoryStream()
+	fileStream := buffer.NewFile(100*1024*1024, file)
+	memoryStream := buffer.NewUnboundedBuffer(32*1024, 100*1024*1024)
+	both := buffer.NewMulti(fileStream, memoryStream)
+	var multi io.Writer
+	if IsTerminal() {
+		if isErrorStream {
+			multi = io.MultiWriter(both, os.Stderr)
+		} else {
+			multi = io.MultiWriter(both, os.Stdout)
+		}
+	} else {
+		multi = both
+	}
 	return &Client{
-		streams:       streams,
-		isErrorStream: isErrorStream,
+		memoryStream: memoryStream,
+		file:         file,
+		fileStream:   fileStream,
+		multi:        multi,
 	}, nil
 }
 
 // Stream returns a Writer stream to multiple internal streams
 func (client *Client) Stream() io.Writer {
-	file := client.streams.file
-	memory := client.streams.memory
-	if IsTerminal() {
-		if client.isErrorStream {
-			return io.MultiWriter(file, memory, os.Stderr)
-		}
-		return io.MultiWriter(file, memory, os.Stdout)
-	}
-	return io.MultiWriter(file, memory)
+	return client.multi
 }
 
 // Clear the streams
 func (client *Client) Clear() error {
-	client.streams.memory.Truncate(0)
-	return client.streams.file.Truncate(0)
+	client.memoryStream.Reset()
+	client.fileStream.Reset()
+	return nil
 }
 
 // Get the in-memory stream
 func (client *Client) Get() []byte {
-	return client.streams.memory.Bytes()
+	return bufio.NewScanner(client.memoryStream).Bytes()
 }
 
 // Close the streams
@@ -75,13 +78,9 @@ func (client *Client) Close() error {
 	if err != nil {
 		return err
 	}
-	return client.streams.file.Close()
+	return client.file.Close()
 }
 
 func getFileFromPath(filePath string) (*os.File, error) {
 	return os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
-}
-
-func memoryStream() *bytes.Buffer {
-	return &bytes.Buffer{}
 }

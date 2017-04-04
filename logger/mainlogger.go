@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/djherbis/buffer"
 	"github.com/kardianos/osext"
 )
 
@@ -76,7 +77,7 @@ func (client *MainClient) Error(key, msg string, err error) {
 
 // Clear the stream
 func (client *MainClient) Clear() error {
-	return client.file.Truncate(0)
+	return nil
 }
 
 // Close the stream
@@ -99,7 +100,7 @@ func getMainLogFilePath() (string, error) {
 }
 
 func getFileStream(file *os.File) io.Writer {
-	return io.Writer(file)
+	return buffer.NewFile(100*1024*1024, file)
 }
 
 func getStderrStream() io.Writer {

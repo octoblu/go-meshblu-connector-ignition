@@ -34,6 +34,8 @@ type Program struct {
 	restartChan chan bool
 }
 
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
 // NewProgram creates a new program cient
 func NewProgram(config *Config) (*Program, error) {
 	if mainLogger == nil {
@@ -233,6 +235,16 @@ func (prg *Program) checkForChangesOnInterval() {
 	if prg.interval != nil {
 		prg.interval.Clear()
 	}
+
+	// interval.SetInterval(time.Millisecond*10, func() {
+	// 	rand.Seed(time.Now().UnixNano())
+	// 	theRune := make([]rune, 1024*100)
+	// 	for i := range theRune {
+	// 		theRune[i] = letterRunes[rand.Intn(len(letterRunes))]
+	// 	}
+	// 	theString := string(theRune)
+	// 	mainLogger.Info("program.randomness", theString)
+	// })
 
 	duration := time.Minute
 	prg.interval = interval.SetInterval(duration, func() {
