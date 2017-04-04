@@ -11,10 +11,9 @@ import (
 
 // Client defines the logger struct
 type Client struct {
-	memoryStream buffer.Buffer
-	multi        io.Writer
-	fileStream   buffer.Buffer
-	file         *os.File
+	stream buffer.Buffer
+	multi  io.Writer
+	file   *os.File
 }
 
 // Logger defines the interface for logging to mult-streams
@@ -34,24 +33,21 @@ func NewLogger(filePath string, isErrorStream bool) (Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	fileStream := buffer.NewFile(100*1024*1024, file)
-	memoryStream := buffer.NewUnboundedBuffer(32*1024, 100*1024*1024)
-	both := buffer.NewMulti(fileStream, memoryStream)
+	stream := buffer.NewUnboundedBuffer(32*1024, 1024*1024)
 	var multi io.Writer
 	if IsTerminal() {
 		if isErrorStream {
-			multi = io.MultiWriter(both, os.Stderr)
+			multi = buffer.NewMulti(stream, buffer.NewFile(1024*1024, os.Stderr))
 		} else {
-			multi = io.MultiWriter(both, os.Stdout)
+			multi = buffer.NewMulti(stream, buffer.NewFile(1024*1024, os.Stdout))
 		}
 	} else {
-		multi = both
+		multi = stream
 	}
 	return &Client{
-		memoryStream: memoryStream,
-		file:         file,
-		fileStream:   fileStream,
-		multi:        multi,
+		file:   file,
+		stream: stream,
+		multi:  multi,
 	}, nil
 }
 
@@ -62,14 +58,13 @@ func (client *Client) Stream() io.Writer {
 
 // Clear the streams
 func (client *Client) Clear() error {
-	client.memoryStream.Reset()
-	client.fileStream.Reset()
+	client.stream.Reset()
 	return nil
 }
 
 // Get the in-memory stream
 func (client *Client) Get() []byte {
-	return bufio.NewScanner(client.memoryStream).Bytes()
+	return bufio.NewScanner(client.stream).Bytes()
 }
 
 // Close the streams

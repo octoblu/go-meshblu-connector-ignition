@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILD_DIR="$HOME/Projects/octoblu/meshblu-connector-test-2"
+BUILD_DIR="$HOME/Projects/octoblu/meshblu-connector-test"
 
 build_it() {
   env GOOS="linux" GOARCH="amd64" \

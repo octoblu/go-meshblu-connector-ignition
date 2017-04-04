@@ -100,7 +100,7 @@ func getMainLogFilePath() (string, error) {
 }
 
 func getFileStream(file *os.File) io.Writer {
-	return buffer.NewFile(100*1024*1024, file)
+	return buffer.NewFile(1024*1024, file)
 }
 
 func getStderrStream() io.Writer {
