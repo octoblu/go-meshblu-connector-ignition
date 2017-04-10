@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
+	"github.com/octoblu/go-meshblu-connector-ignition/forever"
 	"github.com/octoblu/go-meshblu-connector-ignition/logger"
 	"github.com/octoblu/go-meshblu-connector-ignition/runner"
 )
@@ -33,27 +32,17 @@ func run(context *cli.Context) {
 		return
 	}
 	mainLogger = logger.GetMainLogger()
+	mainLogger.Info("main", "starting...")
+	defer mainLogger.Clear()
+	defer mainLogger.Close()
 
 	serviceConfig, err := runner.GetConfig()
 	fatalIfErr(err, "Error getting service config")
 
-	runnerClient := runner.New(serviceConfig)
-	err = runnerClient.Start()
-	fatalIfErr(err, "Error starting runner")
+	foreverClient := forever.NewRunner(serviceConfig)
+	foreverClient.Start()
 
-	mainLogger.Info("main", "Starting...")
-
-	sigTerm := make(chan os.Signal)
-	signal.Notify(sigTerm, syscall.SIGTERM)
-
-	go func() {
-		<-sigTerm
-		mainLogger.Info("main", "SIGTERM received, waiting to exit")
-		runnerClient.Shutdown()
-		mainLogger.Clear()
-		mainLogger.Close()
-		os.Exit(0)
-	}()
+	os.Exit(0)
 }
 
 func fatalIfErr(err error, msg string) {

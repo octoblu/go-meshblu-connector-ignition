@@ -50,12 +50,12 @@ func New(githubSlug, connectorName, dir string, fs afero.Fs, fakeMainLogger logg
 	}
 	updateConfig, err := NewUpdateConfig(fs)
 	if err != nil {
-		mainLogger.Error("update-connector", "Error creating UpdateConfig", err)
+		mainLogger.Error("updateconnector", "Error creating UpdateConfig", err)
 		return nil, err
 	}
 	packageConfig, err := NewPackageConfig(fs)
 	if err != nil {
-		mainLogger.Error("update-connector", "Error creating PackgeConfig", err)
+		mainLogger.Error("updateconnector", "Error creating PackgeConfig", err)
 		return nil, err
 	}
 	return &updater{
@@ -73,33 +73,33 @@ func (u *updater) NeedsUpdate(tag string) (bool, error) {
 	packageConfig := u.packageConfig
 	exists, err := packageConfig.Exists()
 	if err != nil {
-		mainLogger.Error("update-connector", "package.json exists error", err)
+		mainLogger.Error("updateconnector", "package.json exists error", err)
 		return false, err
 	}
 	if !exists {
-		mainLogger.Info("update-connector", "package.json does not exist")
+		mainLogger.Info("updateconnector", "package.json does not exist")
 		return true, nil
 	}
 	err = packageConfig.Load()
 	if err != nil {
-		mainLogger.Error("update-connector", "package.json load error", err)
+		mainLogger.Error("updateconnector", "package.json load error", err)
 		return true, err
 	}
 	if packageConfig.GetTag() == tag {
-		mainLogger.Info("update-connector", fmt.Sprintf("package.version is the same (%s)", tag))
+		mainLogger.Info("updateconnector", fmt.Sprintf("package.version is the same (%s)", tag))
 		return false, nil
 	}
-	mainLogger.Info("update-connector", fmt.Sprintf("package needs update %v != %v", packageConfig.GetTag(), tag))
+	mainLogger.Info("updateconnector", fmt.Sprintf("package needs update %v != %v", packageConfig.GetTag(), tag))
 	return true, nil
 }
 
 // WritePID updates the PID
 func (u *updater) WritePID() error {
 	pid := os.Getpid()
-	mainLogger.Info("update-connector", fmt.Sprintf("WritePID - writing pid %v", pid))
+	mainLogger.Info("updateconnector.WritePID", fmt.Sprintf("writing pid %v", pid))
 	err := u.updateConfig.Write(pid)
 	if err != nil {
-		mainLogger.Error("update-connector", "WritePID Error", err)
+		mainLogger.Error("updateconnector.WritePID", "Error", err)
 		return err
 	}
 	return nil
@@ -107,10 +107,10 @@ func (u *updater) WritePID() error {
 
 // ClearPID clears the PID
 func (u *updater) ClearPID() error {
-	mainLogger.Info("update-connector", "ClearPID")
+	mainLogger.Info("updateconnector.ClearPID", "clearing pid")
 	err := u.updateConfig.Write(0)
 	if err != nil {
-		mainLogger.Error("update-connector", "ClearPID Error", err)
+		mainLogger.Error("updateconnector.ClearPID", "Error", err)
 		return err
 	}
 	return nil
@@ -121,7 +121,7 @@ func (u *updater) Do(tag string) error {
 	uri := u.getDownloadURI(tag)
 	err := extractor.New().DoWithURI(uri, u.dir)
 	if err != nil {
-		mainLogger.Error("update-connector", "Extraction error", err)
+		mainLogger.Error("updateconnector", "Extraction error", err)
 		return err
 	}
 	return u.WritePID()
@@ -135,6 +135,6 @@ func (u *updater) getDownloadURI(tag string) string {
 	}
 	fileName := fmt.Sprintf("%s-%s-%s.%s", u.connectorName, runtime.GOOS, runtime.GOARCH, ext)
 	url := fmt.Sprintf("%s/%s/%s", baseURI, tag, fileName)
-	mainLogger.Info("update-connector", fmt.Sprintf("download uri %v", url))
+	mainLogger.Info("updateconnector", fmt.Sprintf("download uri %v", url))
 	return url
 }

@@ -27,9 +27,9 @@ main() {
     echo 'Missing UUID as first param'
     exit 1
   fi
-  build
-  copy "$uuid"
-  run "$uuid"
+  build \
+  && copy "$uuid" \
+  && run "$uuid"
 }
 
 main "$@"

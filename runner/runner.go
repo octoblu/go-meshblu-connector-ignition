@@ -18,17 +18,19 @@ var mainLogger logger.MainLogger
 type Runner interface {
 	Start() error
 	Shutdown() error
+	IsRunning() bool
 }
 
 // Client defines the stucture of the client
 type Client struct {
-	config *Config
-	prg    *Program
+	config    *Config
+	prg       *Program
+	isRunning bool
 }
 
 // New creates a new instance of runner
 func New(config *Config) Runner {
-	return &Client{config, nil}
+	return &Client{config, nil, false}
 }
 
 // Start runs the connector
@@ -77,7 +79,6 @@ func (client *Client) Start() error {
 			time.Sleep(10 * time.Second)
 			continue
 		}
-
 		return meshbluErr
 	}
 
@@ -85,14 +86,15 @@ func (client *Client) Start() error {
 
 	status, err := status.New(meshbluClient, connectorClient.StatusUUID())
 	if err != nil {
-		mainLogger.Error("runner", "Error getting status device", err)
+		mainLogger.Error("runner", "error getting status device", err)
 		return err
 	}
 	err = status.ResetErrors()
 	if err != nil {
-		mainLogger.Error("runner", "Error resetting errors on status device", err)
+		mainLogger.Error("runner", "error resetting errors on status device", err)
+	} else {
+		mainLogger.Info("runner", "reset errors on status device")
 	}
-	mainLogger.Info("runner", "Resetting errors on status device")
 	prg.status = status
 
 	githubSlug := prg.config.GithubSlug
@@ -111,10 +113,18 @@ func (client *Client) Start() error {
 		mainLogger.Error("runner", "Error running", err)
 		return err
 	}
+	client.isRunning = true
 	return nil
 }
 
 // Shutdown will kill the connector process
 func (client *Client) Shutdown() error {
-	return client.prg.Stop(nil)
+	err := client.prg.Stop(nil)
+	client.isRunning = false
+	return err
+}
+
+// IsRunning will return true if the connector is reported as running
+func (client *Client) IsRunning() bool {
+	return client.isRunning
 }

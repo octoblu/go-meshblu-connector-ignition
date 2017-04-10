@@ -31,6 +31,7 @@ type Program struct {
 	errLog      logger.Logger
 	outLog      logger.Logger
 	interval    interval.Interval
+	started     bool
 	restartChan chan bool
 }
 
@@ -58,16 +59,17 @@ func NewProgram(config *Config) (*Program, error) {
 		},
 		errLog:      errLog,
 		outLog:      outLog,
+		started:     false,
 		restartChan: make(chan bool, 1),
 	}, nil
 }
 
 // Start service but really
 func (prg *Program) Start(_ service.Service) error {
-	mainLogger.Info("program.Start", fmt.Sprintf("Starting %v", prg.config.DisplayName))
+	mainLogger.Info("program.Start", fmt.Sprintf("starting %v", prg.config.DisplayName))
 	err := prg.uc.WritePID()
 	if err != nil {
-		mainLogger.Error("program.Start", "Error Writing PID", err)
+		mainLogger.Error("program.Start", "error writing PID", err)
 		return err
 	}
 
@@ -78,10 +80,11 @@ func (prg *Program) Start(_ service.Service) error {
 
 // Stop service but really
 func (prg *Program) Stop(_ service.Service) error {
-	mainLogger.Info("program.Stop", fmt.Sprintf("Stopping %v", prg.config.DisplayName))
+	mainLogger.Info("program.Stop", fmt.Sprintf("stopping %v", prg.config.DisplayName))
 	defer prg.errLog.Close()
 	defer prg.outLog.Close()
 	close(prg.restartChan)
+	prg.started = false
 	return nil
 }
 
@@ -92,25 +95,27 @@ func (prg *Program) restart() {
 
 func (prg *Program) restartLoop() error {
 	for range prg.restartChan {
-		mainLogger.Info("program.restartLoop", "restart signal received")
+		if prg.started {
+			mainLogger.Info("program.restartLoop", "restart signal received")
+		}
 		backoffDuration := prg.boff.Duration()
-		mainLogger.Info("program.restartLoop", fmt.Sprintf("Waiting for %v due to backoff", backoffDuration))
 		currentRun := uuid.NewV4().String()
 		prg.currentRun = currentRun
 
-		time.Sleep(backoffDuration)
-
+		if prg.started {
+			mainLogger.Info("program.restartLoop", fmt.Sprintf("waiting for %v due to backoff", backoffDuration))
+			time.Sleep(backoffDuration)
+		}
 		err := prg.stop()
-		mainLogger.Info("program.restartLoop", fmt.Sprintf("stop() %v", err))
 		if err != nil {
-			mainLogger.Error("program.restartLoop", "Failed to stop existing child", err)
+			mainLogger.Error("program.restartLoop", "failed to stop existing child", err)
 			return err
 		}
 		mainLogger.Info("program.restartLoop", "existing child stopped")
 
 		err = prg.update()
 		if err != nil {
-			mainLogger.Error("program.restartLoop", "Failed to prg.update", err)
+			mainLogger.Error("program.restartLoop", "failed to prg.update", err)
 		} else {
 			mainLogger.Info("program.restartLoop", "updated")
 		}
@@ -131,9 +136,9 @@ func (prg *Program) restartLoop() error {
 
 		go func() {
 			if waitErr := prg.cmdGroup.Wait(); waitErr != nil {
-				mainLogger.Error("prg.cmd.Wait", "Command errored", waitErr)
+				mainLogger.Error("prg.cmd.Wait", "connector Runner error'd", waitErr)
 				if currentRun != prg.currentRun {
-					mainLogger.Info("prg.cmd.Wait", "Not the currentRun, ignoring")
+					mainLogger.Info("prg.cmd.Wait", "not the currentRun, ignoring")
 					return
 				}
 				prg.restart()
@@ -143,7 +148,7 @@ func (prg *Program) restartLoop() error {
 		go func() {
 			time.Sleep(time.Second * 30)
 			if currentRun == prg.currentRun {
-				mainLogger.Info("program.restartLoop", "ran for 30s without dying, reseting backoff")
+				mainLogger.Info("program.restartLoop", "ran for 30s without dying, resetting backoff")
 				prg.boff.Reset()
 			}
 		}()
@@ -154,7 +159,10 @@ func (prg *Program) restartLoop() error {
 			return err
 		}
 
-		mainLogger.Info("program.restartLoop", "restarted")
+		if prg.started {
+			mainLogger.Info("program.restartLoop", "restarted")
+		}
+		prg.started = true
 	}
 
 	return prg.stop()
@@ -171,7 +179,7 @@ func (prg *Program) updateErrors() error {
 }
 
 func (prg *Program) stop() error {
-	mainLogger.Info("program.stop", "stop()")
+	mainLogger.Info("program.stop", "stopping connector")
 	if prg.cmdGroup == nil {
 		return nil
 	}
@@ -187,7 +195,6 @@ func (prg *Program) getCommandPath() string {
 }
 
 func (prg *Program) checkForChanges() error {
-	mainLogger.Info("program.checkForChanges", "Checking for changes")
 	err := prg.connector.Fetch()
 	if err != nil {
 		mainLogger.Error("program.checkForChanges", "Device Update Error", err)
@@ -228,7 +235,7 @@ func (prg *Program) update() error {
 }
 
 func (prg *Program) checkForChangesOnInterval() {
-	mainLogger.Info("program.checkForChangesOnInterval", "")
+	mainLogger.Info("program.checkForChangesOnInterval", "started")
 
 	if prg.interval != nil {
 		prg.interval.Clear()
@@ -237,7 +244,6 @@ func (prg *Program) checkForChangesOnInterval() {
 	duration := time.Minute
 	prg.interval = interval.SetInterval(duration, func() {
 		prg.checkForChanges()
-		// mainLogger.Info("program.checkForChangesOnInterval", fmt.Sprintf("Will check for meshblu device changes in %v", duration))
 	})
 }
 
@@ -258,6 +264,6 @@ func (prg *Program) TheExecutable(name string) (string, error) {
 		mainLogger.Error("program.TheExecutable", "Error getting executable", err)
 		return "", err
 	}
-	mainLogger.Info("program.TheExectuable", fmt.Sprintf("got executable %s", file))
+	mainLogger.Info("program.TheExectuable", fmt.Sprintf("using executable %s", file))
 	return file, nil
 }
