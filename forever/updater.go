@@ -27,6 +27,9 @@ func doUpdate(version string) error {
 	if err != nil {
 		return err
 	}
+	if res.StatusCode != 200 {
+		return fmt.Errorf("Unexpected response status code %v", res.StatusCode)
+	}
 	defer res.Body.Close()
 	err = update.Apply(res.Body, update.Options{})
 	if err != nil {

@@ -90,8 +90,14 @@ func (client *Client) waitForSigterm() {
 
 func (client *Client) waitForUpdate() {
 	go func() {
+		firstTime := true
 		for {
-			time.Sleep(time.Second * 10)
+			if !firstTime {
+				time.Sleep(time.Minute)
+				// startNew()
+				// return
+			}
+			firstTime = false
 			latestVersion, err := resolveLatestVersion()
 			if err != nil {
 				mainLogger.Error("forever", "Cannot get latest version", err)

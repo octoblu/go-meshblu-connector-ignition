@@ -56,6 +56,14 @@ cross_compile_build(){
         echo '* skipping windows-arm'
         continue
       fi
+      if [ "${goos}-${goarch}" == 'darwin-arm' ]; then
+        echo '* skipping darwin-arm'
+        continue
+      fi
+      if [ "${goos}-${goarch}" == 'darwin-386' ]; then
+        echo '* skipping darwin-386'
+        continue
+      fi
       echo "* building: ${goos}-${goarch}"
       build_on_local "$goos" "$goarch" > /dev/null
     done
