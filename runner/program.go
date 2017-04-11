@@ -122,13 +122,8 @@ func (prg *Program) restartLoop() error {
 		} else {
 			mainLogger.Info("program.restartLoop", "updated")
 		}
-		err = prg.uc.WritePID()
-		if err != nil {
-			mainLogger.Error("program.restartLoop", "error writing PID", err)
-			return err
-		}
 		commandPath := prg.getCommandPath()
-		nodeCommand, err := prg.TheExecutable("node")
+		nodeCommand, err := prg.getExecutable("node")
 		if err != nil {
 			mainLogger.Error("program.restartLoop", "the executable error", err)
 			return err
@@ -264,14 +259,14 @@ func (prg *Program) getEnv() []string {
 	return GetEnviron(pathEnv)
 }
 
-// TheExecutable should return the correct executable
-func (prg *Program) TheExecutable(name string) (string, error) {
+// getExecutable should return the correct executable
+func (prg *Program) getExecutable(name string) (string, error) {
 	thePath := filepath.Join(prg.config.BinPath, name)
 	file, err := exec.LookPath(thePath)
 	if err != nil {
-		mainLogger.Error("program.TheExecutable", "Error getting executable", err)
+		mainLogger.Error("program.getExecutable", "Error getting executable", err)
 		return "", err
 	}
-	mainLogger.Info("program.TheExectuable", fmt.Sprintf("using executable %s", file))
+	mainLogger.Info("program.getExectuable", fmt.Sprintf("using executable %s", file))
 	return file, nil
 }

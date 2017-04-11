@@ -41,6 +41,10 @@ func (client *Client) Start() {
 	if mainLogger == nil {
 		mainLogger = logger.GetMainLogger()
 	}
+	pid := os.Getpid()
+	mainLogger.Info("forever", fmt.Sprintf("writing pid %v", pid))
+	writePID(pid)
+	client.waitForProcessChange()
 	client.waitForSigterm()
 	client.waitForUpdate()
 	client.running = true
@@ -54,6 +58,7 @@ func (client *Client) Start() {
 			time.Sleep(10 * time.Second)
 			continue
 		}
+		mainLogger.Info("forever", "running...")
 		for {
 			if !client.running {
 				mainLogger.Info("forever", "forever is over, shutting down")
@@ -101,7 +106,34 @@ func (client *Client) waitForUpdate() {
 				mainLogger.Error("forever", "Error updating myself", err)
 				continue
 			}
-			mainLogger.Info("forever", "I am updated, reboot for changes to take effect")
+			err = startNew()
+			if err != nil {
+				mainLogger.Error("forever", "start new error", err)
+				continue
+			}
+			mainLogger.Info("forever", "I am updated and started new process")
+			return
+		}
+	}()
+}
+
+func (client *Client) waitForProcessChange() {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			pid, err := getPID()
+			if err != nil {
+				mainLogger.Error("forever", "get pid error", err)
+				continue
+			}
+			if pid == 0 {
+				mainLogger.Info("forever", "pid is 0")
+			}
+			if pid == os.Getpid() {
+				continue
+			}
+			mainLogger.Info("forever", "process changed")
+			client.Shutdown()
 			return
 		}
 	}()

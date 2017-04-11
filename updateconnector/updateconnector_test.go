@@ -35,12 +35,6 @@ var _ = Describe("UpdateConnector", func() {
 	Describe("with an existing config of the current version", func() {
 		var err error
 		fs := afero.NewMemMapFs()
-		updateConfig, updateConfigErr := updateconnector.NewUpdateConfig(fs)
-
-		It("should not have update config err", func() {
-			Expect(updateConfigErr).To(BeNil())
-		})
-
 		BeforeEach(func() {
 			fullPath, _ := osext.Executable()
 			dir, _ := filepath.Split(fullPath)
@@ -56,10 +50,6 @@ var _ = Describe("UpdateConnector", func() {
 		})
 
 		BeforeEach(func() {
-			err = updateConfig.Write(0)
-			if err != nil {
-				return
-			}
 			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs, logger.NewFakeMainLogger())
 		})
 
@@ -89,11 +79,6 @@ var _ = Describe("UpdateConnector", func() {
 	Describe("with an existing config of the wrong version", func() {
 		var err error
 		fs := afero.NewMemMapFs()
-		updateConfig, updateConfigErr := updateconnector.NewUpdateConfig(fs)
-
-		It("should not have update config err", func() {
-			Expect(updateConfigErr).To(BeNil())
-		})
 
 		BeforeEach(func() {
 			fullPath, _ := osext.Executable()
@@ -110,10 +95,6 @@ var _ = Describe("UpdateConnector", func() {
 		})
 
 		BeforeEach(func() {
-			err = updateConfig.Write(0)
-			if err != nil {
-				return
-			}
 			sut, err = updateconnector.New("testblu/test", "test", "path/to/dir", fs, logger.NewFakeMainLogger())
 		})
 

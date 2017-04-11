@@ -2,7 +2,6 @@ package updateconnector
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/octoblu/go-meshblu-connector-assembler/extractor"
@@ -19,19 +18,12 @@ type UpdateConnector interface {
 
 	// Do updates the connector
 	Do(tag string) error
-
-	// WritePID updates the PID
-	WritePID() error
-
-	// ClearPID clears the PID
-	ClearPID() error
 }
 
 type updater struct {
 	githubSlug    string
 	connectorName string
 	dir           string
-	updateConfig  UpdateConfig
 	packageConfig PackageConfig
 	fs            afero.Fs
 }
@@ -48,11 +40,6 @@ func New(githubSlug, connectorName, dir string, fs afero.Fs, fakeMainLogger logg
 	if fs == nil {
 		fs = afero.NewOsFs()
 	}
-	updateConfig, err := NewUpdateConfig(fs)
-	if err != nil {
-		mainLogger.Error("updateconnector", "Error creating UpdateConfig", err)
-		return nil, err
-	}
 	packageConfig, err := NewPackageConfig(fs)
 	if err != nil {
 		mainLogger.Error("updateconnector", "Error creating PackgeConfig", err)
@@ -63,7 +50,6 @@ func New(githubSlug, connectorName, dir string, fs afero.Fs, fakeMainLogger logg
 		connectorName: connectorName,
 		dir:           dir,
 		fs:            fs,
-		updateConfig:  updateConfig,
 		packageConfig: packageConfig,
 	}, nil
 }
@@ -93,38 +79,10 @@ func (u *updater) NeedsUpdate(tag string) (bool, error) {
 	return true, nil
 }
 
-// WritePID updates the PID
-func (u *updater) WritePID() error {
-	pid := os.Getpid()
-	mainLogger.Info("updateconnector.WritePID", fmt.Sprintf("writing pid %v", pid))
-	err := u.updateConfig.Write(pid)
-	if err != nil {
-		mainLogger.Error("updateconnector.WritePID", "Error", err)
-		return err
-	}
-	return nil
-}
-
-// ClearPID clears the PID
-func (u *updater) ClearPID() error {
-	mainLogger.Info("updateconnector.ClearPID", "clearing pid")
-	err := u.updateConfig.Write(0)
-	if err != nil {
-		mainLogger.Error("updateconnector.ClearPID", "Error", err)
-		return err
-	}
-	return nil
-}
-
 // Do updates the connector
 func (u *updater) Do(tag string) error {
 	uri := u.getDownloadURI(tag)
-	err := extractor.New().DoWithURI(uri, u.dir)
-	if err != nil {
-		mainLogger.Error("updateconnector", "Extraction error", err)
-		return err
-	}
-	return u.WritePID()
+	return extractor.New().DoWithURI(uri, u.dir)
 }
 
 func (u *updater) getDownloadURI(tag string) string {
