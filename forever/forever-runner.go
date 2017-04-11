@@ -15,7 +15,7 @@ var mainLogger logger.MainLogger
 
 // Forever defines the interface to run the runner for forever
 type Forever interface {
-	Start()
+	Start() error
 	Shutdown()
 }
 
@@ -37,22 +37,26 @@ func NewRunner(serviceConfig *runner.Config, currentVersion string) Forever {
 }
 
 // Start runs the connector forever
-func (client *Client) Start() {
+func (client *Client) Start() error {
 	if mainLogger == nil {
 		mainLogger = logger.GetMainLogger()
 	}
 	pid := os.Getpid()
-	mainLogger.Info("forever", fmt.Sprintf("writing pid %v", pid))
-	writePID(pid)
+	err := writePID(pid)
+	if err != nil {
+		mainLogger.Error("forever", "Error locking", err)
+		return err
+	}
+	mainLogger.Info("forever", fmt.Sprintf("locking pid %v", pid))
 	client.waitForProcessChange()
 	client.waitForSigterm()
 	client.waitForUpdate()
 	client.running = true
 	for {
 		if !client.running {
-			return
+			return nil
 		}
-		err := client.runnerClient.Start()
+		err = client.runnerClient.Start()
 		if err != nil {
 			mainLogger.Error("forever", "Error running connector (will retry soon)", err)
 			time.Sleep(10 * time.Second)
@@ -62,9 +66,11 @@ func (client *Client) Start() {
 		for {
 			if !client.running {
 				mainLogger.Info("forever", "forever is over, shutting down")
-				return
+				return nil
 			}
 			time.Sleep(time.Second)
+			mainLogger.Info("forever", fmt.Sprintf("unlocking pid %v", pid))
+			unlockPID()
 			continue
 		}
 	}
@@ -138,7 +144,7 @@ func (client *Client) waitForProcessChange() {
 			if pid == os.Getpid() {
 				continue
 			}
-			mainLogger.Info("forever", "process changed")
+			mainLogger.Info("forever", fmt.Sprintf("process changed %v != %v", pid, os.Getpid()))
 			client.Shutdown()
 			return
 		}

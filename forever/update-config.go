@@ -2,6 +2,7 @@ package forever
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
 	"github.com/kardianos/osext"
@@ -9,7 +10,8 @@ import (
 )
 
 type updateJSON struct {
-	PID int `json:"Pid"`
+	PID    int  `json:"Pid"`
+	Locked bool `json:"locked"`
 }
 
 func readConfig(path string) (*updateJSON, error) {
@@ -43,12 +45,43 @@ func writePID(pid int) error {
 		return err
 	}
 	updateConfig, err := readConfig(path)
+	if updateConfig.Locked {
+		return fmt.Errorf("PID is locked! You must exit")
+	}
 	updateConfig.PID = pid
+	updateConfig.Locked = true
 	jsonBytes, err := json.Marshal(updateConfig)
 	if err != nil {
 		return err
 	}
 	return afero.WriteFile(fs, path, jsonBytes, 0644)
+}
+
+func unlockPID() error {
+	fs := afero.NewOsFs()
+	path, err := getUpdateConfigPath()
+	if err != nil {
+		return err
+	}
+	updateConfig, err := readConfig(path)
+	updateConfig.Locked = false
+	jsonBytes, err := json.Marshal(updateConfig)
+	if err != nil {
+		return err
+	}
+	return afero.WriteFile(fs, path, jsonBytes, 0644)
+}
+
+func isLocked() (bool, error) {
+	path, err := getUpdateConfigPath()
+	if err != nil {
+		return false, err
+	}
+	updateConfig, err := readConfig(path)
+	if err != nil {
+		return false, err
+	}
+	return updateConfig.Locked, err
 }
 
 func getPID() (int, error) {

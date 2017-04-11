@@ -25,7 +25,7 @@ func main() {
 }
 
 func run(context *cli.Context) {
-	err := logger.InitMainLogger()
+	err := logger.InitMainLogger(version())
 	if err != nil {
 		log.Panicln("Error initializing the main logger", err.Error())
 		os.Exit(1)
@@ -40,8 +40,8 @@ func run(context *cli.Context) {
 	fatalIfErr(err, "Error getting service config")
 
 	foreverClient := forever.NewRunner(serviceConfig, version())
-	foreverClient.Start()
-
+	err = foreverClient.Start()
+	fatalIfErr(err, "Error during start")
 	os.Exit(0)
 }
 
