@@ -69,11 +69,6 @@ func NewProgram(config *Config) (*Program, error) {
 // Start service but really
 func (prg *Program) Start(_ service.Service) error {
 	mainLogger.Info("program.Start", fmt.Sprintf("starting %v", prg.config.DisplayName))
-	err := prg.uc.WritePID()
-	if err != nil {
-		mainLogger.Error("program.Start", "error writing PID", err)
-		return err
-	}
 	prg.shouldRestart = true
 	go prg.restartLoop()
 	prg.restartChan <- true
@@ -127,7 +122,11 @@ func (prg *Program) restartLoop() error {
 		} else {
 			mainLogger.Info("program.restartLoop", "updated")
 		}
-
+		err = prg.uc.WritePID()
+		if err != nil {
+			mainLogger.Error("program.restartLoop", "error writing PID", err)
+			return err
+		}
 		commandPath := prg.getCommandPath()
 		nodeCommand, err := prg.TheExecutable("node")
 		if err != nil {

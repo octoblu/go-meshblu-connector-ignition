@@ -32,14 +32,14 @@ func run(context *cli.Context) {
 		return
 	}
 	mainLogger = logger.GetMainLogger()
-	mainLogger.Info("main", fmt.Sprintf("starting %v...", VERSION))
+	mainLogger.Info("main", fmt.Sprintf("starting %v...", version()))
 	defer mainLogger.Clear()
 	defer mainLogger.Close()
 
 	serviceConfig, err := runner.GetConfig()
 	fatalIfErr(err, "Error getting service config")
 
-	foreverClient := forever.NewRunner(serviceConfig)
+	foreverClient := forever.NewRunner(serviceConfig, version())
 	foreverClient.Start()
 
 	os.Exit(0)

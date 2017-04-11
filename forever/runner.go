@@ -1,6 +1,7 @@
 package forever
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -19,18 +20,18 @@ type Forever interface {
 
 // Client defines the stucture of the client
 type Client struct {
-	runnerClient runner.Runner
-	running      bool
-	restart      bool
+	runnerClient   runner.Runner
+	running        bool
+	currentVersion string
 }
 
 // NewRunner creates a new instance of the forever runner
-func NewRunner(serviceConfig *runner.Config) Forever {
+func NewRunner(serviceConfig *runner.Config, currentVersion string) Forever {
 	runnerClient := runner.New(serviceConfig)
 	return &Client{
-		runnerClient: runnerClient,
-		running:      false,
-		restart:      false,
+		runnerClient:   runnerClient,
+		running:        false,
+		currentVersion: currentVersion,
 	}
 }
 
@@ -41,12 +42,13 @@ func (client *Client) Start() {
 	}
 	client.waitForSigterm()
 	client.waitForUpdate()
+	client.waitForProcessChange()
 	client.running = true
 	for {
-		mainLogger.Info("forever", "starting runner...")
 		if !client.running {
 			return
 		}
+		mainLogger.Info("forever", "starting runner...")
 		err := client.runnerClient.Start()
 		mainLogger.Info("forever", "started...")
 		if err != nil {
@@ -54,15 +56,10 @@ func (client *Client) Start() {
 			time.Sleep(10 * time.Second)
 			continue
 		}
-		client.restart = false
 		for {
 			if !client.running {
 				mainLogger.Info("forever", "forever is over, shutting down")
 				return
-			}
-			if client.restart {
-				mainLogger.Info("forever", "forever is going to restart")
-				break
 			}
 			time.Sleep(time.Second)
 			continue
@@ -90,14 +87,48 @@ func (client *Client) waitForSigterm() {
 
 func (client *Client) waitForUpdate() {
 	go func() {
-		time.Sleep(time.Second * 10)
-		mainLogger.Info("forever", "I AM GOING TO UPDATE MYSELF")
-		err := doUpdate()
-		if err != nil {
-			mainLogger.Error("forever", "Error updating myself", err)
+		for {
+			time.Sleep(time.Second * 10)
+			latestVersion, err := resolveLatestVersion()
+			if err != nil {
+				mainLogger.Error("forever", "Cannot get latest version", err)
+				continue
+			}
+			if !shouldUpdate(client.currentVersion, latestVersion) {
+				continue
+			}
+			mainLogger.Info("forever", fmt.Sprintf("I AM GOING TO UPDATE MYSELF TO %s", latestVersion))
+			err = doUpdate(latestVersion)
+			if err != nil {
+				mainLogger.Error("forever", "Error updating myself", err)
+				continue
+			}
+			err = startNew()
+			if err != nil {
+				mainLogger.Error("forever", "Error starting new process", err)
+				continue
+			}
 			return
 		}
-		client.restart = true
-		mainLogger.Info("forever", "UPDATED, restart set")
+	}()
+}
+
+func (client *Client) waitForProcessChange() {
+	go func() {
+		for {
+			time.Sleep(time.Second * 10)
+			same, err := sameProcess()
+			if err != nil {
+				mainLogger.Error("forever", "Error checking PID", err)
+				continue
+			}
+			if !same {
+				mainLogger.Info("forever", "PROCESS CHANGED SHUTTING DOWN")
+				client.runnerClient.Shutdown()
+				time.Sleep(time.Second * 10)
+				client.Shutdown()
+				return
+			}
+		}
 	}()
 }

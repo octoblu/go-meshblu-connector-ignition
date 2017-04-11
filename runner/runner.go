@@ -109,7 +109,7 @@ func (client *Client) Start() error {
 	client.prg = prg
 
 	go func() {
-		mainLogger.Info("runner", "serivce about to start")
+		mainLogger.Info("runner", "service about to start")
 		err := srv.Run()
 		if err != nil {
 			mainLogger.Error("runner", "service run error", err)

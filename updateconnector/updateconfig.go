@@ -12,6 +12,7 @@ import (
 type UpdateConfig interface {
 	Load() error
 	Write(pid int) error
+	ReadPID() int
 }
 
 type updateJSON struct {
@@ -73,6 +74,10 @@ func (c *config) Write(pid int) error {
 		return err
 	}
 	return afero.WriteFile(c.fs, c.path, jsonBytes, 0644)
+}
+
+func (c *config) ReadPID() int {
+	return c.json.Pid
 }
 
 func getUpdateConfigPath() (string, error) {
