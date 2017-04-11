@@ -42,7 +42,6 @@ func (client *Client) Start() {
 	}
 	client.waitForSigterm()
 	client.waitForUpdate()
-	client.waitForProcessChange()
 	client.running = true
 	for {
 		if !client.running {
@@ -103,6 +102,7 @@ func (client *Client) waitForUpdate() {
 				mainLogger.Error("forever", "Error updating myself", err)
 				continue
 			}
+			client.waitForProcessChange()
 			err = startNew()
 			if err != nil {
 				mainLogger.Error("forever", "Error starting new process", err)
@@ -116,7 +116,6 @@ func (client *Client) waitForUpdate() {
 func (client *Client) waitForProcessChange() {
 	go func() {
 		for {
-			time.Sleep(time.Second * 10)
 			same, err := sameProcess()
 			if err != nil {
 				mainLogger.Error("forever", "Error checking PID", err)
@@ -125,10 +124,10 @@ func (client *Client) waitForProcessChange() {
 			if !same {
 				mainLogger.Info("forever", "PROCESS CHANGED SHUTTING DOWN")
 				client.runnerClient.Shutdown()
-				time.Sleep(time.Second * 10)
 				client.Shutdown()
 				return
 			}
+			time.Sleep(time.Second)
 		}
 	}()
 }
