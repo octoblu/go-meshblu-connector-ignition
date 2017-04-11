@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/octoblu/go-meshblu-connector-ignition/logger"
@@ -47,9 +48,7 @@ func (client *Client) Start() {
 		if !client.running {
 			return
 		}
-		mainLogger.Info("forever", "starting runner...")
 		err := client.runnerClient.Start()
-		mainLogger.Info("forever", "started...")
 		if err != nil {
 			mainLogger.Error("forever", "Error running connector (will retry soon)", err)
 			time.Sleep(10 * time.Second)
@@ -74,7 +73,7 @@ func (client *Client) Shutdown() {
 
 func (client *Client) waitForSigterm() {
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		for range sigChan {
@@ -96,38 +95,14 @@ func (client *Client) waitForUpdate() {
 			if !shouldUpdate(client.currentVersion, latestVersion) {
 				continue
 			}
-			mainLogger.Info("forever", fmt.Sprintf("I AM GOING TO UPDATE MYSELF TO %s", latestVersion))
+			mainLogger.Info("forever", fmt.Sprintf("there is a new ignition version %s", latestVersion))
 			err = doUpdate(latestVersion)
 			if err != nil {
 				mainLogger.Error("forever", "Error updating myself", err)
 				continue
 			}
-			client.waitForProcessChange()
-			err = startNew()
-			if err != nil {
-				mainLogger.Error("forever", "Error starting new process", err)
-				continue
-			}
+			mainLogger.Info("forever", "I am updated, reboot for changes to take effect")
 			return
-		}
-	}()
-}
-
-func (client *Client) waitForProcessChange() {
-	go func() {
-		for {
-			same, err := sameProcess()
-			if err != nil {
-				mainLogger.Error("forever", "Error checking PID", err)
-				continue
-			}
-			if !same {
-				mainLogger.Info("forever", "PROCESS CHANGED SHUTTING DOWN")
-				client.runnerClient.Shutdown()
-				client.Shutdown()
-				return
-			}
-			time.Sleep(time.Second)
 		}
 	}()
 }
