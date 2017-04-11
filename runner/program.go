@@ -19,20 +19,21 @@ import (
 
 // Program inteface that is real
 type Program struct {
-	config      *Config
-	cmd         *exec.Cmd
-	cmdGroup    *process.Group
-	connector   connector.Connector
-	currentRun  string
-	status      status.Status
-	uc          updateconnector.UpdateConnector
-	boff        *backoff.Backoff
-	timeStarted time.Time
-	errLog      logger.Logger
-	outLog      logger.Logger
-	interval    interval.Interval
-	started     bool
-	restartChan chan bool
+	config        *Config
+	cmd           *exec.Cmd
+	cmdGroup      *process.Group
+	connector     connector.Connector
+	currentRun    string
+	status        status.Status
+	uc            updateconnector.UpdateConnector
+	boff          *backoff.Backoff
+	timeStarted   time.Time
+	errLog        logger.Logger
+	outLog        logger.Logger
+	interval      interval.Interval
+	started       bool
+	shouldRestart bool
+	restartChan   chan bool
 }
 
 // NewProgram creates a new program cient
@@ -57,10 +58,11 @@ func NewProgram(config *Config) (*Program, error) {
 			Min: time.Second,
 			Max: time.Minute,
 		},
-		errLog:      errLog,
-		outLog:      outLog,
-		started:     false,
-		restartChan: make(chan bool, 1),
+		errLog:        errLog,
+		outLog:        outLog,
+		started:       false,
+		shouldRestart: true,
+		restartChan:   make(chan bool, 1),
 	}, nil
 }
 
@@ -72,7 +74,7 @@ func (prg *Program) Start(_ service.Service) error {
 		mainLogger.Error("program.Start", "error writing PID", err)
 		return err
 	}
-
+	prg.shouldRestart = true
 	go prg.restartLoop()
 	prg.restartChan <- true
 	return nil
@@ -83,8 +85,8 @@ func (prg *Program) Stop(_ service.Service) error {
 	mainLogger.Info("program.Stop", fmt.Sprintf("stopping %v", prg.config.DisplayName))
 	defer prg.errLog.Close()
 	defer prg.outLog.Close()
-	close(prg.restartChan)
 	prg.started = false
+	prg.shouldRestart = false
 	return nil
 }
 
@@ -95,6 +97,10 @@ func (prg *Program) restart() {
 
 func (prg *Program) restartLoop() error {
 	for range prg.restartChan {
+		if !prg.shouldRestart {
+			mainLogger.Info("program.restartLoop", "should not restart")
+			return nil
+		}
 		if prg.started {
 			mainLogger.Info("program.restartLoop", "restart signal received")
 		}
@@ -111,7 +117,9 @@ func (prg *Program) restartLoop() error {
 			mainLogger.Error("program.restartLoop", "failed to stop existing child", err)
 			return err
 		}
-		mainLogger.Info("program.restartLoop", "existing child stopped")
+		if prg.started {
+			mainLogger.Info("program.restartLoop", "existing child stopped")
+		}
 
 		err = prg.update()
 		if err != nil {
@@ -158,7 +166,6 @@ func (prg *Program) restartLoop() error {
 		if err != nil {
 			return err
 		}
-
 		if prg.started {
 			mainLogger.Info("program.restartLoop", "restarted")
 		}
@@ -179,7 +186,9 @@ func (prg *Program) updateErrors() error {
 }
 
 func (prg *Program) stop() error {
-	mainLogger.Info("program.stop", "stopping connector")
+	if prg.started {
+		mainLogger.Info("program.stop", "stopping connector")
+	}
 	if prg.cmdGroup == nil {
 		return nil
 	}

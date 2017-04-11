@@ -108,12 +108,14 @@ func (client *Client) Start() error {
 	prg.uc = uc
 	client.prg = prg
 
-	err = srv.Run()
-	if err != nil {
-		mainLogger.Error("runner", "Error running", err)
-		return err
-	}
-	client.isRunning = true
+	go func() {
+		mainLogger.Info("runner", "serivce about to start")
+		err := srv.Run()
+		if err != nil {
+			mainLogger.Error("runner", "service run error", err)
+		}
+		client.isRunning = false
+	}()
 	return nil
 }
 

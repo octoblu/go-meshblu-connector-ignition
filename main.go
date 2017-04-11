@@ -32,7 +32,7 @@ func run(context *cli.Context) {
 		return
 	}
 	mainLogger = logger.GetMainLogger()
-	mainLogger.Info("main", "starting...")
+	mainLogger.Info("main", fmt.Sprintf("starting %v...", VERSION))
 	defer mainLogger.Clear()
 	defer mainLogger.Close()
 
