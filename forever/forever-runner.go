@@ -63,14 +63,14 @@ func (client *Client) Start() error {
 			continue
 		}
 		mainLogger.Info("forever", "running...")
+		mainLogger.Info("forever", fmt.Sprintf("unlocking pid %v", pid))
+		unlockPID()
 		for {
 			if !client.running {
 				mainLogger.Info("forever", "forever is over, shutting down")
 				return nil
 			}
 			time.Sleep(time.Second)
-			mainLogger.Info("forever", fmt.Sprintf("unlocking pid %v", pid))
-			unlockPID()
 			continue
 		}
 	}

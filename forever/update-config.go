@@ -10,7 +10,7 @@ import (
 )
 
 type updateJSON struct {
-	PID    int  `json:"Pid"`
+	PID    int  `json:"pid"`
 	Locked bool `json:"locked"`
 }
 
